@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --brand-charcoal: #292A2D;
+    --brand-gold: #C6A15B;
+    --brand-gold-dark: #9A7832;
+    --brand-gold-light: #F7EEDB;
+    --brand-silver: #B9BCC4;
+    --brand-warm-grey: #F1F0ED;
+    --brand-warm-white: #FAF9F6;
+    --brand-slate: #4C5056;
+    --brand-border: #DAD8D2;
+    --brand-text: #1A1B1E;
+    --brand-text-muted: #5C6068;
+    
+    --font-heading: 'Sora', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  * {
+    border-color: var(--brand-border);
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--brand-warm-white);
+    color: var(--brand-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom focus outline for high-contrast accessibility (WCAG AA) */
+  :focus-visible {
+    outline: 2px solid var(--brand-gold);
+    outline-offset: 2px;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F1F0ED;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #DAD8D2;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #B9BCC4;
+  }
+}
+
+/* Print specific styles for invoice rendering */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+  .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 1.2cm 1.2cm;
+    size: A4 portrait;
+  }
+}
