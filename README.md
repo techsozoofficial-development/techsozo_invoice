@@ -163,3 +163,5 @@ src/
    - Allow read/write only to authenticated agency users (`request.auth != null`).
 4. Implement `FirestoreInvoiceRepository.ts` adhering to the `IInvoiceRepository` interface.
 5. In `src/repositories/LocalStorageRepository.ts`, swap the singleton export to `FirestoreInvoiceRepository`. No presentation components will require modification.
+#   t e c h s o z o _ i n v o i c e  
+ 
