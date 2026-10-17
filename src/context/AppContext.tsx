@@ -21,6 +21,7 @@ import {
 export type ActiveTab =
   | 'dashboard'
   | 'invoices'
+  | 'pending_invoices'
   | 'create_invoice'
   | 'clients'
   | 'services'
@@ -45,6 +46,8 @@ interface AppContextValue {
   setPaymentModalInvoiceId: (id: string | null) => void;
   reminderModalInvoiceId: string | null;
   setReminderModalInvoiceId: (id: string | null) => void;
+  invoiceListInitialFilter: string;
+  setInvoiceListInitialFilter: (filter: string) => void;
 
   // Data
   clients: Client[];
@@ -89,6 +92,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [paymentModalInvoiceId, setPaymentModalInvoiceId] = useState<string | null>(null);
   const [reminderModalInvoiceId, setReminderModalInvoiceId] = useState<string | null>(null);
+  const [invoiceListInitialFilter, setInvoiceListInitialFilter] = useState<string>('all');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -330,6 +334,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPaymentModalInvoiceId,
         reminderModalInvoiceId,
         setReminderModalInvoiceId,
+        invoiceListInitialFilter,
+        setInvoiceListInitialFilter,
         clients,
         services,
         invoices,

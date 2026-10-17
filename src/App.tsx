@@ -8,9 +8,10 @@ import { InvoicePreviewPage } from './pages/InvoicePreviewPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { PendingInvoicesPage } from './pages/PendingInvoicesPage';
 
 const AppContent: React.FC = () => {
-  const { activeTab, selectedInvoiceId, setSelectedInvoiceId } = useApp();
+  const { activeTab, setActiveTab, selectedInvoiceId, setSelectedInvoiceId } = useApp();
 
   // If a specific invoice is selected to preview, display the preview view
   if (selectedInvoiceId) {
@@ -27,6 +28,8 @@ const AppContent: React.FC = () => {
       return <DashboardPage />;
     case 'invoices':
       return <InvoicesListPage />;
+    case 'pending_invoices':
+      return <PendingInvoicesPage onBack={() => setActiveTab('dashboard')} />;
     case 'create_invoice':
       return <InvoiceEditorPage />;
     case 'clients':

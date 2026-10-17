@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { formatINR } from '../utils/indianNumbering';
 import { calculateOutstandingBalance, calculateReceivedAmount } from '../utils/calculations';
@@ -21,10 +22,12 @@ export const DashboardPage: React.FC = () => {
     invoices,
     payments,
     clients,
+    companySettings,
     setActiveTab,
     setSelectedInvoiceId,
     setEditingDraftId,
     setPaymentModalInvoiceId,
+    setInvoiceListInitialFilter,
   } = useApp();
 
   // 1. Dynamic Totals Derivation
@@ -41,6 +44,11 @@ export const DashboardPage: React.FC = () => {
     return inv && inv.isFinalized && !inv.isCancelled ? sum + p.amount : sum;
   }, 0);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const configuredWindowDays = companySettings?.defaultPaymentTermsDays || 15;
+
   // Total Overdue and Total Pending
   let totalOverdue = 0;
   let totalPending = 0;
@@ -48,17 +56,21 @@ export const DashboardPage: React.FC = () => {
   finalizedActiveInvoices.forEach((inv) => {
     const invPayments = payments.filter((p) => p.invoiceId === inv.id);
     const balance = calculateOutstandingBalance(inv.total, invPayments);
+    if (balance <= 0) return;
 
-    if (inv.status === 'overdue') {
+    // Check due date relative to today
+    const [y, m, d] = inv.dueDate.split('-').map(Number);
+    const dueDate = new Date(y, m - 1, d);
+    dueDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0 || inv.status === 'overdue') {
       totalOverdue += balance;
-    } else if (inv.status === 'sent' || inv.status === 'partially_paid') {
+    } else if (diffDays <= configuredWindowDays) {
+      // Due today or in future within configured payment window
       totalPending += balance;
     }
   });
-
-  // 2. Urgent attention items (Overdue or Due in 7 days)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const urgentInvoices = finalizedActiveInvoices
     .filter((inv) => {
@@ -124,71 +136,128 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ================= 4 FINANCIAL STAT CARDS ================= */}
+      {/* ================= 4 FINANCIAL STAT CARDS (ALL CLICKABLE) ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-        {/* Total Billed */}
-        <div className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#C6A15B]/50 transition-all duration-200">
+        {/* Total Billed -> Invoices List (All finalized) */}
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            setInvoiceListInitialFilter('all');
+            setActiveTab('invoices');
+          }}
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#C6A15B] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          aria-label="View all billed invoices"
+        >
           <div className="flex items-center justify-between text-[#5C6068] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Billed</span>
-            <div className="p-2 rounded-xl bg-[#F1F0ED] text-[#292A2D]">
+            <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-[#1A1B1E] transition-colors">
+              Total Billed
+            </span>
+            <div className="p-2 rounded-xl bg-[#F1F0ED] text-[#292A2D] group-hover:bg-[#FAF5E8] group-hover:text-[#9A7832] transition-colors">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl lg:text-3xl font-heading font-bold text-[#1A1B1E] tabular-nums mb-1">
+          <div className="text-2xl lg:text-3xl font-heading font-bold text-[#1A1B1E] tabular-nums mb-1 group-hover:text-[#9A7832] transition-colors">
             {formatINR(totalBilled)}
           </div>
-          <p className="text-xs text-[#5C6068]">
-            Across {finalizedActiveInvoices.length} finalized invoices
-          </p>
-        </div>
+          <div className="flex items-center justify-between text-xs text-[#5C6068]">
+            <span>Across {finalizedActiveInvoices.length} finalized invoices</span>
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7832]" />
+          </div>
+        </motion.div>
 
-        {/* Total Received */}
-        <div className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#15803D]/50 transition-all duration-200">
+        {/* Total Received -> Invoices List filtered to Paid */}
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            setInvoiceListInitialFilter('paid');
+            setActiveTab('invoices');
+          }}
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#15803D] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          aria-label="View paid invoices"
+        >
           <div className="flex items-center justify-between text-[#15803D] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068]">Total Received</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-[#15803D]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068] group-hover:text-[#15803D] transition-colors">
+              Total Received
+            </span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-[#15803D] group-hover:bg-emerald-100 transition-colors">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl lg:text-3xl font-heading font-bold text-[#15803D] tabular-nums mb-1">
             {formatINR(totalReceived)}
           </div>
-          <p className="text-xs text-[#5C6068]">
-            {totalBilled > 0 ? `${Math.round((totalReceived / totalBilled) * 100)}% collection rate` : 'No bills yet'}
-          </p>
-        </div>
+          <div className="flex items-center justify-between text-xs text-[#5C6068]">
+            <span>
+              {totalBilled > 0 ? `${Math.round((totalReceived / totalBilled) * 100)}% collection rate` : 'No bills yet'}
+            </span>
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#15803D]" />
+          </div>
+        </motion.div>
 
-        {/* Pending Receivables */}
-        <div className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#C6A15B]/50 transition-all duration-200">
+        {/* Pending Receivables (Due Soon) -> Dedicated Pending Invoices View */}
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            setActiveTab('pending_invoices');
+          }}
+          className="bg-white border-2 border-[#C6A15B]/50 hover:border-[#C6A15B] rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group bg-linear-to-br from-white to-amber-50/20"
+          role="button"
+          tabIndex={0}
+          aria-label="Open Pending Invoices View"
+        >
           <div className="flex items-center justify-between text-[#C6A15B] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068]">Pending (Due Soon)</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-[#9A7832]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068] group-hover:text-[#9A7832] transition-colors">
+              Pending (Due Soon)
+            </span>
+            <div className="p-2 rounded-xl bg-amber-50 text-[#9A7832] group-hover:bg-amber-100 transition-colors">
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl lg:text-3xl font-heading font-bold text-[#9A7832] tabular-nums mb-1">
             {formatINR(totalPending)}
           </div>
-          <p className="text-xs text-[#5C6068]">
-            Within active payment terms
-          </p>
-        </div>
+          <div className="flex items-center justify-between text-xs text-[#5C6068]">
+            <span>Within active payment terms (≤ {configuredWindowDays}d)</span>
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7832]" />
+          </div>
+        </motion.div>
 
-        {/* Overdue Amount */}
-        <div className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#B91C1C]/50 transition-all duration-200">
+        {/* Overdue Amount -> Invoices List filtered to Overdue */}
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            setInvoiceListInitialFilter('overdue');
+            setActiveTab('invoices');
+          }}
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#B91C1C] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          aria-label="View overdue invoices"
+        >
           <div className="flex items-center justify-between text-[#B91C1C] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068]">Overdue Balance</span>
-            <div className="p-2 rounded-xl bg-red-50 text-[#B91C1C]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6068] group-hover:text-[#B91C1C] transition-colors">
+              Overdue Balance
+            </span>
+            <div className="p-2 rounded-xl bg-red-50 text-[#B91C1C] group-hover:bg-red-100 transition-colors">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl lg:text-3xl font-heading font-bold text-[#B91C1C] tabular-nums mb-1">
             {formatINR(totalOverdue)}
           </div>
-          <p className="text-xs text-[#5C6068]">
-            Requires prompt client reminder
-          </p>
-        </div>
+          <div className="flex items-center justify-between text-xs text-[#5C6068]">
+            <span>Requires prompt client reminder</span>
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#B91C1C]" />
+          </div>
+        </motion.div>
       </div>
 
       {/* ================= COLLECTION RATIO BAR ================= */}

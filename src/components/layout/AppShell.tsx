@@ -12,7 +12,6 @@ import {
   Plus,
   Bell,
   Search,
-  ShieldCheck,
   Menu,
   X,
   ExternalLink,
@@ -145,22 +144,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Local Demo Architecture Status Card */}
-        <div className="p-4 m-3 bg-[#1F2022] border border-[#3D4046] rounded-xl text-xs space-y-2">
-          <div className="flex items-center justify-between text-[#C6A15B] font-semibold">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Phase 1 Frontend</span>
-            </span>
-            <span className="text-[10px] uppercase tracking-wider bg-[#292A2D] px-1.5 py-0.5 rounded border border-[#C6A15B]/30 text-[#C6A15B]">
-              Demo
-            </span>
-          </div>
-          <p className="text-[#8E929B] text-[11px] leading-relaxed">
-            Data isolated in browser localStorage. Repository interfaces prepared for Firebase Auth + Cloud Firestore.
-          </p>
-        </div>
       </aside>
 
       {/* ================= MOBILE HEADER ================= */}

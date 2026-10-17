@@ -41,13 +41,22 @@ export const InvoicesListPage: React.FC = () => {
     setPaymentModalInvoiceId,
     reminderModalInvoiceId,
     setReminderModalInvoiceId,
+    invoiceListInitialFilter,
+    setInvoiceListInitialFilter,
     addToast,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(invoiceListInitialFilter || 'all');
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+
+  // Sync if initialFilter changes externally
+  React.useEffect(() => {
+    if (invoiceListInitialFilter) {
+      setStatusFilter(invoiceListInitialFilter);
+    }
+  }, [invoiceListInitialFilter]);
 
   // Confirmation Modals State
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
