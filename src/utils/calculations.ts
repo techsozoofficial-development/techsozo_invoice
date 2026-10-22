@@ -73,11 +73,11 @@ export function formatInvoiceNumber(financialYear: string, sequence: number): st
 
 export interface CalculationInput {
   items: InvoiceLineItem[];
-  discountPercent: number;
-  gstEnabled: boolean;
-  gstRate: number;
-  companyState: string;
-  clientState: string;
+  discountPercent?: number;
+  gstEnabled?: boolean;
+  gstRate?: number;
+  companyState?: string;
+  clientState?: string;
 }
 
 export interface CalculationResult {
@@ -93,16 +93,18 @@ export interface CalculationResult {
 }
 
 /**
- * Computes all invoice financial figures with decimal-safe precision.
+ * Computes all invoice financial figures:
+ * - Subtotal = sum of all line-item totals
+ * - Discount = applicable discount amount
+ * - Total Payable = Subtotal - Discount
+ * - Amount in Words matches the final payable amount in INR (₹)
  */
 export function calculateInvoiceTotals(input: CalculationInput): CalculationResult {
   const {
     items,
-    discountPercent,
-    gstEnabled,
-    gstRate,
-    companyState,
-    clientState,
+    discountPercent = 0,
+    companyState = 'Tamil Nadu',
+    clientState = '',
   } = input;
 
   // 1. Subtotal = sum of all line item amounts
@@ -114,83 +116,30 @@ export function calculateInvoiceTotals(input: CalculationInput): CalculationResu
   const safeDiscountPercent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
   const discountAmount = roundToTwoDecimals(subtotal * (safeDiscountPercent / 100));
 
-  // 3. Taxable Amount
+  // 3. Taxable/Net Amount
   const taxableAmount = Math.max(0, roundToTwoDecimals(subtotal - discountAmount));
 
-  // 4. GST Snapshot
-  let taxSnapshot: GSTConfigSnapshot;
+  // 4. Default zero tax snapshot for modular backwards-compatibility
+  const taxSnapshot: GSTConfigSnapshot = {
+    enabled: false,
+    companyState,
+    clientState,
+    isInterstate: false,
+    cgstRate: 0,
+    sgstRate: 0,
+    igstRate: 0,
+    cgstAmount: 0,
+    sgstAmount: 0,
+    igstAmount: 0,
+    totalTax: 0,
+  };
 
-  if (gstEnabled && gstRate > 0 && taxableAmount > 0) {
-    const normCompanyState = (companyState || '').trim().toLowerCase();
-    const normClientState = (clientState || '').trim().toLowerCase();
-    
-    // Interstate if client state is specified and different from company state
-    const isInterstate = Boolean(
-      normClientState &&
-      normCompanyState &&
-      normClientState !== normCompanyState
-    );
-
-    if (isInterstate) {
-      // IGST (full rate)
-      const igstAmount = roundToTwoDecimals(taxableAmount * (gstRate / 100));
-      taxSnapshot = {
-        enabled: true,
-        companyState: companyState || 'Tamil Nadu',
-        clientState: clientState || '',
-        isInterstate: true,
-        cgstRate: 0,
-        sgstRate: 0,
-        igstRate: gstRate,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount,
-        totalTax: igstAmount,
-      };
-    } else {
-      // Intra-state (CGST + SGST split evenly)
-      const halfRate = roundToTwoDecimals(gstRate / 2);
-      const cgstAmount = roundToTwoDecimals(taxableAmount * (halfRate / 100));
-      const sgstAmount = roundToTwoDecimals(taxableAmount * (halfRate / 100));
-      taxSnapshot = {
-        enabled: true,
-        companyState: companyState || 'Tamil Nadu',
-        clientState: clientState || 'Tamil Nadu',
-        isInterstate: false,
-        cgstRate: halfRate,
-        sgstRate: halfRate,
-        igstRate: 0,
-        cgstAmount,
-        sgstAmount,
-        igstAmount: 0,
-        totalTax: roundToTwoDecimals(cgstAmount + sgstAmount),
-      };
-    }
-  } else {
-    // GST Disabled or 0 rate
-    taxSnapshot = {
-      enabled: false,
-      companyState: companyState || 'Tamil Nadu',
-      clientState: clientState || '',
-      isInterstate: false,
-      cgstRate: 0,
-      sgstRate: 0,
-      igstRate: 0,
-      cgstAmount: 0,
-      sgstAmount: 0,
-      igstAmount: 0,
-      totalTax: 0,
-    };
-  }
-
-  // 5. Total before round-off
-  const unroundedTotal = roundToTwoDecimals(taxableAmount + taxSnapshot.totalTax);
-
-  // 6. Round-off to nearest rupee
+  // 5. Total Payable = Subtotal - Discount
+  const unroundedTotal = taxableAmount;
   const finalTotal = roundToNearestRupee(unroundedTotal);
   const roundOff = roundToTwoDecimals(finalTotal - unroundedTotal);
 
-  // 7. Amount in words
+  // 6. Amount in words (matching final payable amount)
   const amountInWords = numberToIndianWords(finalTotal);
 
   return {

@@ -24,23 +24,21 @@ export const ServicesPage: React.FC = () => {
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [defaultRate, setDefaultRate] = useState<string>('25000');
-  const [sac, setSac] = useState('998361');
+  const [defaultRate, setDefaultRate] = useState<string>('');
   const [active, setActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredServices = services.filter((s) => {
-    if (!searchQuery.trim()) return true;
+  const filteredServices = React.useMemo(() => {
+    if (!searchQuery.trim()) return services;
     const q = searchQuery.toLowerCase();
-    return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
-  });
+    return services.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
+  }, [services, searchQuery]);
 
   const handleOpenAdd = () => {
     setEditingService(null);
     setName('');
     setDescription('');
-    setDefaultRate('25000');
-    setSac('998361');
+    setDefaultRate('');
     setActive(true);
     setIsModalOpen(true);
   };
@@ -50,7 +48,6 @@ export const ServicesPage: React.FC = () => {
     setName(srv.name);
     setDescription(srv.description);
     setDefaultRate(String(srv.defaultRate));
-    setSac(srv.sac || '998361');
     setActive(srv.active);
     setIsModalOpen(true);
   };
@@ -68,9 +65,6 @@ export const ServicesPage: React.FC = () => {
         defaultRate: Math.max(0, parseFloat(defaultRate) || 0),
         active,
       };
-      if (sac.trim()) {
-        payload.sac = sac.trim();
-      }
       await saveService(payload);
       setIsModalOpen(false);
     } catch (err: any) {
@@ -140,34 +134,19 @@ export const ServicesPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#4C5056] mb-1">
-                    Standard Rate (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    required
-                    value={defaultRate}
-                    onChange={(e) => setDefaultRate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white border border-[#DAD8D2] rounded-xl font-medium focus:ring-2 focus:ring-[#C6A15B]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#4C5056] mb-1">
-                    SAC Code (Tax Accounting)
-                  </label>
-                  <input
-                    type="text"
-                    value={sac}
-                    onChange={(e) => setSac(e.target.value)}
-                    placeholder="998361"
-                    className="w-full px-3 py-2 text-sm bg-white border border-[#DAD8D2] rounded-xl font-mono focus:ring-2 focus:ring-[#C6A15B]"
-                  />
-                </div>
+              <div>
+                <label className="block font-medium text-[#4C5056] mb-1">
+                  Standard Rate (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  required
+                  value={defaultRate}
+                  onChange={(e) => setDefaultRate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white border border-[#DAD8D2] rounded-xl font-medium focus:ring-2 focus:ring-[#C6A15B]"
+                />
               </div>
 
               <div className="pt-2 flex items-center gap-2">
@@ -187,14 +166,14 @@ export const ServicesPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#4C5056] rounded-xl min-h-[44px]"
+                  className="px-4 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#4C5056] rounded-xl min-h-11"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold rounded-xl min-h-[44px]"
+                  className="px-5 py-2 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold rounded-xl min-h-11"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Service'}
                 </button>
@@ -211,13 +190,13 @@ export const ServicesPage: React.FC = () => {
             Services & Rate Catalog
           </h2>
           <p className="text-sm text-[#5C6068]">
-            Predefine standard digital agency deliverables, default hourly/retainer rates, and SAC tax codes.
+            Predefine standard digital agency deliverables and default hourly/retainer rates.
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-sm transition-all min-h-[44px]"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-sm transition-all min-h-11"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Add New Service</span>
@@ -257,11 +236,6 @@ export const ServicesPage: React.FC = () => {
                   <span className="font-heading font-bold text-base text-[#1A1B1E] leading-snug">
                     {srv.name}
                   </span>
-                  {srv.sac && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FAF5E8] text-[#9A7832] border border-[#C6A15B]/30 shrink-0">
-                      SAC {srv.sac}
-                    </span>
-                  )}
                 </div>
 
                 <p className="text-xs text-[#5C6068] leading-relaxed line-clamp-3 mb-3">

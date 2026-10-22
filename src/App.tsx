@@ -10,7 +10,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PendingInvoicesPage } from './pages/PendingInvoicesPage';
 
-const AppContent: React.FC = () => {
+const AppContent: React.FC = React.memo(() => {
   const { activeTab, setActiveTab, selectedInvoiceId, setSelectedInvoiceId } = useApp();
 
   // If a specific invoice is selected to preview, display the preview view
@@ -41,7 +41,7 @@ const AppContent: React.FC = () => {
     default:
       return <DashboardPage />;
   }
-};
+});
 
 export function App() {
   return (

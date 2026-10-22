@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Invoice } from '../types';
+import { Invoice, Payment } from '../types';
 import { formatINR } from '../utils/indianNumbering';
 import {
   calculateOutstandingBalance,
@@ -51,113 +50,121 @@ export const PendingInvoicesPage: React.FC<PendingInvoicesPageProps> = ({ onBack
 
   const configuredWindowDays = companySettings.defaultPaymentTermsDays || 15;
 
-  // Normalized today at 00:00:00
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 1. Pre-index payments and pre-calculate balances for O(1) access
+  const { paymentsByInvoice, balancesByInvoice } = useMemo(() => {
+    const pMap = new Map<string, Payment[]>();
+    for (const p of payments) {
+      if (p.isReversed) continue;
+      const list = pMap.get(p.invoiceId);
+      if (list) list.push(p);
+      else pMap.set(p.invoiceId, [p]);
+    }
+    const bMap = new Map<string, number>();
+    for (const inv of invoices) {
+      const invPayments = pMap.get(inv.id) || [];
+      bMap.set(inv.id, calculateOutstandingBalance(inv.total, invPayments));
+    }
+    return { paymentsByInvoice: pMap, balancesByInvoice: bMap };
+  }, [payments, invoices]);
 
-  // 1. Identify every unpaid or partially paid finalized invoice whose due date is today or in the future
-  // Excludes drafts, cancelled invoices, fully paid invoices, and overdue invoices (due date < today)
-  const pendingInvoices = invoices.filter((inv) => {
-    if (!inv.isFinalized || inv.isCancelled) return false;
+  // 2. Identify every unpaid or partially paid finalized invoice whose due date is today or in the future
+  const { filteredInvoices, displayedOutstandingTotal, urgentCount } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    const balance = calculateOutstandingBalance(inv.total, invPayments);
-    if (balance <= 0) return false;
+    const pending = invoices.filter((inv) => {
+      if (!inv.isFinalized || inv.isCancelled) return false;
+      const balance = balancesByInvoice.get(inv.id) || 0;
+      if (balance <= 0) return false;
 
-    // Parse dueDate YYYY-MM-DD
-    const [y, m, d] = inv.dueDate.split('-').map(Number);
-    const dueDate = new Date(y, m - 1, d);
-    dueDate.setHours(0, 0, 0, 0);
+      const [y, m, d] = inv.dueDate.split('-').map(Number);
+      const dueDate = new Date(y, m - 1, d);
+      dueDate.setHours(0, 0, 0, 0);
 
-    // Difference in calendar days from today (>= 0 means today or future)
-    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return false; // Overdue invoices are excluded
+      const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return false; // Overdue invoices excluded
 
-    return true;
-  });
+      return true;
+    });
 
-  // 2. Filter & search applied to pending invoices
-  const filteredInvoices = pendingInvoices
-    .filter((inv) => {
-      // Configured window / timeline filter
+    const query = searchQuery.trim().toLowerCase();
+
+    const filtered = pending
+      .filter((inv) => {
+        const [y, m, d] = inv.dueDate.split('-').map(Number);
+        const dueDate = new Date(y, m - 1, d);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (windowFilter === 'window' && diffDays > configuredWindowDays) return false;
+        if (windowFilter === 'today' && diffDays !== 0) return false;
+        if (windowFilter === '7days' && diffDays > 7) return false;
+        if (windowFilter === '15days' && diffDays > 15) return false;
+
+        if (subStatusFilter === 'sent' && inv.status !== 'sent') return false;
+        if (subStatusFilter === 'partially_paid' && inv.status !== 'partially_paid') return false;
+
+        if (clientFilter !== 'all' && inv.clientId !== clientFilter) return false;
+
+        if (query) {
+          const numberMatch = (inv.invoiceNumber || '').toLowerCase().includes(query);
+          const clientMatch = (inv.clientSnapshot?.name || '').toLowerCase().includes(query);
+          const contactMatch = (inv.clientSnapshot?.contactPerson || '').toLowerCase().includes(query);
+          return numberMatch || clientMatch || contactMatch;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const aBal = balancesByInvoice.get(a.id) || 0;
+        const bBal = balancesByInvoice.get(b.id) || 0;
+
+        if (sortBy === 'due_asc') {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        if (sortBy === 'due_desc') {
+          return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        }
+        if (sortBy === 'balance_desc') {
+          return bBal - aBal;
+        }
+        if (sortBy === 'balance_asc') {
+          return aBal - bBal;
+        }
+        if (sortBy === 'date_desc') {
+          return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
+        }
+        return 0;
+      });
+
+    const total = filtered.reduce((sum, inv) => sum + (balancesByInvoice.get(inv.id) || 0), 0);
+
+    const urgent = pending.filter((inv) => {
       const [y, m, d] = inv.dueDate.split('-').map(Number);
       const dueDate = new Date(y, m - 1, d);
       dueDate.setHours(0, 0, 0, 0);
       const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 3;
+    }).length;
 
-      if (windowFilter === 'window' && diffDays > configuredWindowDays) {
-        return false;
-      }
-      if (windowFilter === 'today' && diffDays !== 0) {
-        return false;
-      }
-      if (windowFilter === '7days' && diffDays > 7) {
-        return false;
-      }
-      if (windowFilter === '15days' && diffDays > 15) {
-        return false;
-      }
+    return {
+      filteredInvoices: filtered,
+      displayedOutstandingTotal: total,
+      urgentCount: urgent,
+    };
+  }, [
+    invoices,
+    balancesByInvoice,
+    searchQuery,
+    windowFilter,
+    configuredWindowDays,
+    subStatusFilter,
+    clientFilter,
+    sortBy,
+  ]);
 
-      // Sub-status filter: all, sent (unpaid), partially_paid
-      if (subStatusFilter === 'sent' && inv.status !== 'sent') {
-        return false;
-      }
-      if (subStatusFilter === 'partially_paid' && inv.status !== 'partially_paid') {
-        return false;
-      }
-
-      // Client filter
-      if (clientFilter !== 'all' && inv.clientId !== clientFilter) {
-        return false;
-      }
-
-      // Search query (invoice #, client name, contact person)
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const numberMatch = (inv.invoiceNumber || '').toLowerCase().includes(query);
-        const clientMatch = (inv.clientSnapshot?.name || '').toLowerCase().includes(query);
-        const contactMatch = (inv.clientSnapshot?.contactPerson || '').toLowerCase().includes(query);
-        return numberMatch || clientMatch || contactMatch;
-      }
-
-      return true;
-    })
-    .sort((a, b) => {
-      const aPayments = payments.filter((p) => p.invoiceId === a.id);
-      const bPayments = payments.filter((p) => p.invoiceId === b.id);
-      const aBal = calculateOutstandingBalance(a.total, aPayments);
-      const bBal = calculateOutstandingBalance(b.total, bPayments);
-
-      if (sortBy === 'due_asc') {
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      if (sortBy === 'due_desc') {
-        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-      }
-      if (sortBy === 'balance_desc') {
-        return bBal - aBal;
-      }
-      if (sortBy === 'balance_asc') {
-        return aBal - bBal;
-      }
-      if (sortBy === 'date_desc') {
-        return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
-      }
-      return 0;
-    });
-
-  // 3. Dynamic aggregates for this view: sum of outstanding balances for exactly the invoices displayed
-  const displayedOutstandingTotal = filteredInvoices.reduce((sum, inv) => {
-    const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    return sum + calculateOutstandingBalance(inv.total, invPayments);
-  }, 0);
-
-  const displayedOriginalTotal = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-  const displayedReceivedTotal = filteredInvoices.reduce((sum, inv) => {
-    const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    return sum + calculateReceivedAmount(invPayments);
-  }, 0);
+  const displayedOriginalTotal = useMemo(() => filteredInvoices.reduce((sum, inv) => sum + inv.total, 0), [filteredInvoices]);
+  const displayedReceivedTotal = Math.max(0, displayedOriginalTotal - displayedOutstandingTotal);
 
   const handleView = (invoiceId: string) => {
     setSelectedInvoiceId(invoiceId);
@@ -172,6 +179,8 @@ export const PendingInvoicesPage: React.FC<PendingInvoicesPageProps> = ({ onBack
   };
 
   const getDueBadge = (dueDateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const [y, m, d] = dueDateStr.split('-').map(Number);
     const dueDate = new Date(y, m - 1, d);
     dueDate.setHours(0, 0, 0, 0);
@@ -179,7 +188,7 @@ export const PendingInvoicesPage: React.FC<PendingInvoicesPageProps> = ({ onBack
 
     if (diffDays === 0) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white animate-pulse">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
           <Clock className="w-3 h-3" />
           <span>Due Today</span>
         </span>
@@ -202,13 +211,7 @@ export const PendingInvoicesPage: React.FC<PendingInvoicesPageProps> = ({ onBack
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="space-y-6"
-    >
+    <div className="space-y-6 animate-in fade-in duration-150">
       {/* Modals for payment & reminder */}
       {paymentModalInvoiceId && (
         <PaymentManagerModal
@@ -682,6 +685,6 @@ export const PendingInvoicesPage: React.FC<PendingInvoicesPageProps> = ({ onBack
           })
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };

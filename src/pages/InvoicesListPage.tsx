@@ -63,42 +63,61 @@ export const InvoicesListPage: React.FC = () => {
   const [cancellingInvoiceId, setCancellingInvoiceId] = useState<string | null>(null);
   const [finalizingInvoiceId, setFinalizingInvoiceId] = useState<string | null>(null);
 
-  // Filter & Search
-  const filteredInvoices = invoices
-    .filter((inv) => {
-      // Status filter
-      if (statusFilter !== 'all' && inv.status !== statusFilter) {
-        return false;
-      }
-      // Client filter
-      if (clientFilter !== 'all' && inv.clientId !== clientFilter) {
-        return false;
-      }
-      // Search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const numberMatch = (inv.invoiceNumber || 'draft').toLowerCase().includes(query);
-        const clientMatch = (inv.clientSnapshot?.name || '').toLowerCase().includes(query);
-        const contactMatch = (inv.clientSnapshot?.contactPerson || '').toLowerCase().includes(query);
-        return numberMatch || clientMatch || contactMatch;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'date_desc') {
-        return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
-      }
-      if (sortBy === 'date_asc') {
-        return new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
-      }
-      if (sortBy === 'amount_desc') {
-        return b.total - a.total;
-      }
-      if (sortBy === 'amount_asc') {
-        return a.total - b.total;
-      }
-      return 0;
-    });
+  // Pre-index payments and pre-calculate balances for O(1) access
+  const { paymentsByInvoice, balancesByInvoice } = React.useMemo(() => {
+    const pMap = new Map<string, typeof payments>();
+    for (const p of payments) {
+      if (p.isReversed) continue;
+      const list = pMap.get(p.invoiceId);
+      if (list) list.push(p);
+      else pMap.set(p.invoiceId, [p]);
+    }
+    const bMap = new Map<string, number>();
+    for (const inv of invoices) {
+      const invPayments = pMap.get(inv.id) || [];
+      bMap.set(inv.id, calculateOutstandingBalance(inv.total, invPayments));
+    }
+    return { paymentsByInvoice: pMap, balancesByInvoice: bMap };
+  }, [payments, invoices]);
+
+  // Filter & Search with useMemo
+  const filteredInvoices = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return invoices
+      .filter((inv) => {
+        // Status filter
+        if (statusFilter !== 'all' && inv.status !== statusFilter) {
+          return false;
+        }
+        // Client filter
+        if (clientFilter !== 'all' && inv.clientId !== clientFilter) {
+          return false;
+        }
+        // Search query
+        if (query) {
+          const numberMatch = (inv.invoiceNumber || 'draft').toLowerCase().includes(query);
+          const clientMatch = (inv.clientSnapshot?.name || '').toLowerCase().includes(query);
+          const contactMatch = (inv.clientSnapshot?.contactPerson || '').toLowerCase().includes(query);
+          return numberMatch || clientMatch || contactMatch;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'date_desc') {
+          return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
+        }
+        if (sortBy === 'date_asc') {
+          return new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+        }
+        if (sortBy === 'amount_desc') {
+          return b.total - a.total;
+        }
+        if (sortBy === 'amount_asc') {
+          return a.total - b.total;
+        }
+        return 0;
+      });
+  }, [invoices, statusFilter, clientFilter, searchQuery, sortBy]);
 
   const handleView = (invoiceId: string) => {
     setSelectedInvoiceId(invoiceId);
@@ -365,8 +384,7 @@ export const InvoicesListPage: React.FC = () => {
               </tr>
             ) : (
               filteredInvoices.map((inv) => {
-                const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-                const balance = calculateOutstandingBalance(inv.total, invPayments);
+                const balance = balancesByInvoice.get(inv.id) ?? 0;
                 const isDraft = !inv.isFinalized;
                 const isCancelled = inv.isCancelled;
 
@@ -511,8 +529,7 @@ export const InvoicesListPage: React.FC = () => {
           </div>
         ) : (
           filteredInvoices.map((inv) => {
-            const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-            const balance = calculateOutstandingBalance(inv.total, invPayments);
+            const balance = balancesByInvoice.get(inv.id) ?? 0;
             const isDraft = !inv.isFinalized;
             const isCancelled = inv.isCancelled;
 

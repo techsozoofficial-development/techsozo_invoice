@@ -12,6 +12,8 @@ import {
 import { numberToIndianWords, formatINR } from '../utils/indianNumbering';
 import { Payment } from '../types';
 
+import { computeGSTSnapshot } from '../utils/gstEngine';
+
 describe('Financial Calculations Engine', () => {
   it('safely computes line item totals with 2-decimal precision', () => {
     expect(calculateLineItemAmount(3, 4999.99)).toBe(14999.97);
@@ -20,69 +22,56 @@ describe('Financial Calculations Engine', () => {
     expect(calculateLineItemAmount(-2, 500)).toBe(0);
   });
 
-  it('calculates invoice totals with GST OFF (demo default)', () => {
+  it('calculates invoice totals: Subtotal - Discount = Total Payable', () => {
     const result = calculateInvoiceTotals({
       items: [
         { id: '1', description: 'SEO Strategy', quantity: 1, rate: 25000, amount: 25000 },
         { id: '2', description: 'Social Media Management', quantity: 2, rate: 15000, amount: 30000 },
       ],
       discountPercent: 10,
-      gstEnabled: false,
-      gstRate: 18,
-      companyState: 'Tamil Nadu',
-      clientState: 'Tamil Nadu',
     });
 
     expect(result.subtotal).toBe(55000);
     expect(result.discountAmount).toBe(5500);
-    expect(result.taxableAmount).toBe(49500);
-    expect(result.taxSnapshot.enabled).toBe(false);
-    expect(result.taxSnapshot.totalTax).toBe(0);
     expect(result.total).toBe(49500);
     expect(result.amountInWords).toBe('Forty-Nine Thousand Five Hundred Rupees Only');
   });
 
-  it('calculates intra-state CGST + SGST when GST is enabled for Tamil Nadu', () => {
+  it('calculates exact payable amount with zero discount', () => {
     const result = calculateInvoiceTotals({
       items: [
         { id: '1', description: 'Ads Management', quantity: 1, rate: 10000, amount: 10000 },
       ],
       discountPercent: 0,
-      gstEnabled: true,
+    });
+
+    expect(result.subtotal).toBe(10000);
+    expect(result.discountAmount).toBe(0);
+    expect(result.total).toBe(10000);
+    expect(result.amountInWords).toBe('Ten Thousand Rupees Only');
+  });
+
+  it('verifies modular GST engine snapshot for future reintroduction', () => {
+    const intraState = computeGSTSnapshot({
+      taxableAmount: 10000,
       gstRate: 18,
       companyState: 'Tamil Nadu',
       clientState: 'Tamil Nadu',
     });
+    expect(intraState.isInterstate).toBe(false);
+    expect(intraState.cgstAmount).toBe(900);
+    expect(intraState.sgstAmount).toBe(900);
+    expect(intraState.totalTax).toBe(1800);
 
-    expect(result.subtotal).toBe(10000);
-    expect(result.taxSnapshot.isInterstate).toBe(false);
-    expect(result.taxSnapshot.cgstRate).toBe(9);
-    expect(result.taxSnapshot.sgstRate).toBe(9);
-    expect(result.taxSnapshot.cgstAmount).toBe(900);
-    expect(result.taxSnapshot.sgstAmount).toBe(900);
-    expect(result.taxSnapshot.totalTax).toBe(1800);
-    expect(result.total).toBe(11800);
-    expect(result.amountInWords).toBe('Eleven Thousand Eight Hundred Rupees Only');
-  });
-
-  it('calculates inter-state IGST when client state differs from company state', () => {
-    const result = calculateInvoiceTotals({
-      items: [
-        { id: '1', description: 'Content Writing', quantity: 1, rate: 10000, amount: 10000 },
-      ],
-      discountPercent: 0,
-      gstEnabled: true,
+    const interState = computeGSTSnapshot({
+      taxableAmount: 10000,
       gstRate: 18,
       companyState: 'Tamil Nadu',
       clientState: 'Karnataka',
     });
-
-    expect(result.taxSnapshot.isInterstate).toBe(true);
-    expect(result.taxSnapshot.igstRate).toBe(18);
-    expect(result.taxSnapshot.igstAmount).toBe(1800);
-    expect(result.taxSnapshot.cgstAmount).toBe(0);
-    expect(result.taxSnapshot.sgstAmount).toBe(0);
-    expect(result.total).toBe(11800);
+    expect(interState.isInterstate).toBe(true);
+    expect(interState.igstAmount).toBe(1800);
+    expect(interState.totalTax).toBe(1800);
   });
 
   it('handles rounding off to the nearest rupee accurately', () => {
@@ -91,10 +80,6 @@ describe('Financial Calculations Engine', () => {
         { id: '1', description: 'Consulting', quantity: 1, rate: 12500.67, amount: 12500.67 },
       ],
       discountPercent: 0,
-      gstEnabled: false,
-      gstRate: 0,
-      companyState: 'Tamil Nadu',
-      clientState: 'Tamil Nadu',
     });
 
     expect(result.unroundedTotal).toBe(12500.67);

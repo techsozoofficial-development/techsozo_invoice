@@ -34,11 +34,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Compute pending and overdue counts for sidebar badge
-  const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
-  const draftCount = invoices.filter((i) => i.status === 'draft').length;
+  // Compute pending and overdue counts for sidebar badge with useMemo
+  const { overdueCount, draftCount } = React.useMemo(() => {
+    let overdue = 0;
+    let draft = 0;
+    for (const i of invoices) {
+      if (i.status === 'overdue') overdue++;
+      else if (i.status === 'draft') draft++;
+    }
+    return { overdueCount: overdue, draftCount: draft };
+  }, [invoices]);
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number; badgeColor?: string }[] = [
+  const navItems = React.useMemo<{ id: ActiveTab; label: string; icon: React.ReactNode; badge?: number; badgeColor?: string }[]>(() => [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -66,7 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       label: 'Settings',
       icon: <Settings className="w-5 h-5" />,
     },
-  ];
+  ], [overdueCount, draftCount]);
 
   const handleCreateNewInvoice = () => {
     setSelectedInvoiceId(null);
@@ -84,7 +91,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#FAF9F6] text-[#1A1B1E]">
+    <div className="h-dvh flex flex-col md:flex-row bg-[#FAF9F6] text-[#1A1B1E] overflow-hidden print:h-auto print:overflow-visible">
       {/* Toast Notification Mount */}
       <ToastContainer />
 
@@ -92,17 +99,17 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       <NotificationDrawer isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
 
       {/* ================= DESKTOP SIDEBAR ================= */}
-      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-[#292A2D] text-[#FAF9F6] border-r border-[#3D4046] shrink-0 no-print select-none">
+      <aside className="hidden md:flex flex-col md:fixed md:inset-y-0 md:left-0 w-64 lg:w-72 h-dvh bg-[#292A2D] text-[#FAF9F6] border-r border-[#3D4046] shrink-0 z-30 no-print select-none">
         {/* Brand Header */}
-        <div className="p-6 border-b border-[#3D4046]">
+        <div className="p-6 border-b border-[#3D4046] shrink-0">
           <BrandLogo variant="full" size="md" />
         </div>
 
         {/* Primary Action Button */}
-        <div className="p-4">
+        <div className="p-4 shrink-0">
           <button
             onClick={handleCreateNewInvoice}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-md transition-all duration-200 hover:shadow-lg active:scale-[0.98] min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-md transition-all duration-200 hover:shadow-lg active:scale-[0.98] min-h-11"
           >
             <Plus className="w-5 h-5 stroke-[2.5]" />
             <span>Create Invoice</span>
@@ -110,7 +117,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-2 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 min-h-0 px-3 py-2 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive =
               activeTab === item.id ||
@@ -120,7 +127,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 min-h-[44px] ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 min-h-11 ${
                   isActive
                     ? 'bg-[#37393F] text-[#FAF9F6] font-semibold border-l-4 border-[#C6A15B] shadow-inner'
                     : 'text-[#B9BCC4] hover:text-[#FAF9F6] hover:bg-[#323438]'
@@ -153,7 +160,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsNotifOpen(true)}
-            className="relative p-2 rounded-lg text-[#B9BCC4] hover:text-[#FAF9F6] hover:bg-[#37393F] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="relative p-2 rounded-lg text-[#B9BCC4] hover:text-[#FAF9F6] hover:bg-[#37393F] transition-colors min-h-11 min-w-11 flex items-center justify-center"
             aria-label="Open notifications"
           >
             <Bell className="w-5 h-5" />
@@ -164,7 +171,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           <button
             onClick={handleCreateNewInvoice}
-            className="p-2 bg-[#C6A15B] text-[#292A2D] rounded-lg font-semibold flex items-center justify-center min-h-[44px] min-w-[44px]"
+            className="p-2 bg-[#C6A15B] text-[#292A2D] rounded-lg font-semibold flex items-center justify-center min-h-11 min-w-11"
             aria-label="Create new invoice"
           >
             <Plus className="w-5 h-5 stroke-[2.5]" />
@@ -172,7 +179,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg text-[#B9BCC4] hover:text-[#FAF9F6] hover:bg-[#37393F] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg text-[#B9BCC4] hover:text-[#FAF9F6] hover:bg-[#37393F] transition-colors min-h-11 min-w-11 flex items-center justify-center"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -183,7 +190,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       {/* ================= MOBILE DRAWER MENU ================= */}
       {isMobileMenuOpen && (
         <div
-          className="md:hidden fixed inset-0 top-[61px] z-40 bg-black/60 backdrop-blur-xs flex flex-col no-print animate-in fade-in"
+          className="md:hidden fixed inset-0 top-15.25 z-40 bg-black/60 backdrop-blur-xs flex flex-col no-print animate-in fade-in"
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div
@@ -196,7 +203,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-base font-medium min-h-[48px] ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-base font-medium min-h-12 ${
                     isActive
                       ? 'bg-[#37393F] text-[#FAF9F6] font-semibold border-l-4 border-[#C6A15B]'
                       : 'text-[#B9BCC4] hover:bg-[#323438]'
@@ -223,9 +230,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       )}
 
       {/* ================= MAIN CONTENT AREA ================= */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto overflow-x-hidden md:ml-64 lg:ml-72 print:h-auto print:overflow-visible print:ml-0 print:m-0">
         {/* Desktop Top Header Bar */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-[#DAD8D2] shrink-0 no-print">
+        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-[#DAD8D2] shrink-0 sticky top-0 z-20 no-print">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-heading font-bold text-[#292A2D] capitalize">
               {activeTab === 'create_invoice'
@@ -243,7 +250,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             {/* Notification Button */}
             <button
               onClick={() => setIsNotifOpen(true)}
-              className="relative p-2.5 rounded-xl border border-[#DAD8D2] hover:border-[#C6A15B] bg-[#FAF9F6] text-[#4C5056] hover:text-[#292A2D] transition-colors min-h-[44px]"
+              className="relative p-2.5 rounded-xl border border-[#DAD8D2] hover:border-[#C6A15B] bg-[#FAF9F6] text-[#4C5056] hover:text-[#292A2D] transition-colors min-h-11"
               aria-label="View notifications"
             >
               <Bell className="w-5 h-5" />
@@ -257,7 +264,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             {/* Quick Action Button */}
             <button
               onClick={handleCreateNewInvoice}
-              className="flex items-center gap-2 px-4 py-2 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] text-sm font-semibold rounded-xl border border-[#C6A15B]/40 hover:border-[#C6A15B] transition-all duration-200 min-h-[44px]"
+              className="flex items-center gap-2 px-4 py-2 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] text-sm font-semibold rounded-xl border border-[#C6A15B]/40 hover:border-[#C6A15B] transition-all duration-200 min-h-11"
             >
               <Plus className="w-4 h-4 text-[#C6A15B]" />
               <span>New Invoice</span>
@@ -266,7 +273,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8 print:p-0 print:m-0 print:max-w-none">
           {children}
         </main>
       </div>
@@ -279,7 +286,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] font-medium transition-colors min-h-[48px] relative ${
+              className={`flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] font-medium transition-colors min-h-12 relative ${
                 isActive ? 'text-[#C6A15B]' : 'text-[#8E929B] hover:text-[#FAF9F6]'
               }`}
             >

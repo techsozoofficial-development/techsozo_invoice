@@ -1,8 +1,8 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatINR } from '../utils/indianNumbering';
-import { calculateOutstandingBalance, calculateReceivedAmount } from '../utils/calculations';
+import { calculateOutstandingBalance } from '../utils/calculations';
+import { Payment } from '../types';
 import {
   TrendingUp,
   CheckCircle2,
@@ -30,65 +30,91 @@ export const DashboardPage: React.FC = () => {
     setInvoiceListInitialFilter,
   } = useApp();
 
-  // 1. Dynamic Totals Derivation
-  const finalizedActiveInvoices = invoices.filter((i) => i.isFinalized && !i.isCancelled);
-
-  // Total Billed
-  const totalBilled = finalizedActiveInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-  // Total Received
-  const validPayments = payments.filter((p) => !p.isReversed);
-  const totalReceived = validPayments.reduce((sum, p) => {
-    // Check if the payment belongs to a finalized, non-cancelled invoice
-    const inv = invoices.find((i) => i.id === p.invoiceId);
-    return inv && inv.isFinalized && !inv.isCancelled ? sum + p.amount : sum;
-  }, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const configuredWindowDays = companySettings?.defaultPaymentTermsDays || 15;
-
-  // Total Overdue and Total Pending
-  let totalOverdue = 0;
-  let totalPending = 0;
-
-  finalizedActiveInvoices.forEach((inv) => {
-    const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    const balance = calculateOutstandingBalance(inv.total, invPayments);
-    if (balance <= 0) return;
-
-    // Check due date relative to today
-    const [y, m, d] = inv.dueDate.split('-').map(Number);
-    const dueDate = new Date(y, m - 1, d);
-    dueDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0 || inv.status === 'overdue') {
-      totalOverdue += balance;
-    } else if (diffDays <= configuredWindowDays) {
-      // Due today or in future within configured payment window
-      totalPending += balance;
+  // 1. Pre-index payments by invoiceId for O(1) lookups
+  const paymentsByInvoice = useMemo(() => {
+    const map = new Map<string, Payment[]>();
+    for (const p of payments) {
+      if (p.isReversed) continue;
+      const list = map.get(p.invoiceId);
+      if (list) list.push(p);
+      else map.set(p.invoiceId, [p]);
     }
-  });
+    return map;
+  }, [payments]);
 
-  const urgentInvoices = finalizedActiveInvoices
-    .filter((inv) => {
-      const invPayments = payments.filter((p) => p.invoiceId === inv.id);
+  // 2. Dynamic Totals Derivation with useMemo
+  const {
+    finalizedActiveInvoices,
+    totalBilled,
+    totalReceived,
+    totalOverdue,
+    totalPending,
+    urgentInvoices,
+    recentInvoices,
+    configuredWindowDays,
+  } = useMemo(() => {
+    const finalized = invoices.filter((i) => i.isFinalized && !i.isCancelled);
+    const billed = finalized.reduce((sum, inv) => sum + inv.total, 0);
+
+    const validPayments = payments.filter((p) => !p.isReversed);
+    const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv]));
+    const received = validPayments.reduce((sum, p) => {
+      const inv = invoiceMap.get(p.invoiceId);
+      return inv && inv.isFinalized && !inv.isCancelled ? sum + p.amount : sum;
+    }, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const windowDays = companySettings?.defaultPaymentTermsDays || 15;
+
+    let overdue = 0;
+    let pending = 0;
+
+    finalized.forEach((inv) => {
+      const invPayments = paymentsByInvoice.get(inv.id) || [];
       const balance = calculateOutstandingBalance(inv.total, invPayments);
-      if (balance <= 0) return false;
+      if (balance <= 0) return;
 
       const [y, m, d] = inv.dueDate.split('-').map(Number);
       const dueDate = new Date(y, m - 1, d);
+      dueDate.setHours(0, 0, 0, 0);
       const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays <= 7;
-    })
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  // 3. Recent 5 invoices
-  const recentInvoices = [...invoices]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+      if (diffDays < 0 || inv.status === 'overdue') {
+        overdue += balance;
+      } else if (diffDays <= windowDays) {
+        pending += balance;
+      }
+    });
+
+    const urgent = finalized
+      .filter((inv) => {
+        const invPayments = paymentsByInvoice.get(inv.id) || [];
+        const balance = calculateOutstandingBalance(inv.total, invPayments);
+        if (balance <= 0) return false;
+
+        const [y, m, d] = inv.dueDate.split('-').map(Number);
+        const dueDate = new Date(y, m - 1, d);
+        const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      })
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+    const recent = [...invoices]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+
+    return {
+      finalizedActiveInvoices: finalized,
+      totalBilled: billed,
+      totalReceived: received,
+      totalOverdue: overdue,
+      totalPending: pending,
+      urgentInvoices: urgent,
+      recentInvoices: recent,
+      configuredWindowDays: windowDays,
+    };
+  }, [invoices, payments, paymentsByInvoice, companySettings]);
 
   const handleInvoiceClick = (invId: string, isDraft: boolean) => {
     if (isDraft) {
@@ -101,7 +127,7 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
+    <div className="space-y-8 animate-in fade-in duration-150">
       {/* Top Banner & Quick Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
@@ -120,7 +146,7 @@ export const DashboardPage: React.FC = () => {
               setEditingDraftId(null);
               setActiveTab('create_invoice');
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-sm transition-all min-h-[44px]"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-sm rounded-xl shadow-xs transition-all duration-150 active:scale-[0.98] min-h-[44px]"
           >
             <FilePlus className="w-4 h-4" />
             <span>Create Invoice</span>
@@ -128,7 +154,7 @@ export const DashboardPage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('clients')}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-[#F1F0ED] text-[#292A2D] border border-[#DAD8D2] font-medium text-sm rounded-xl transition-all min-h-[44px]"
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-[#F1F0ED] text-[#292A2D] border border-[#DAD8D2] font-medium text-sm rounded-xl transition-all duration-150 active:scale-[0.98] min-h-[44px]"
           >
             <UserPlus className="w-4 h-4 text-[#5C6068]" />
             <span>Add Client</span>
@@ -139,14 +165,12 @@ export const DashboardPage: React.FC = () => {
       {/* ================= 4 FINANCIAL STAT CARDS (ALL CLICKABLE) ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
         {/* Total Billed -> Invoices List (All finalized) */}
-        <motion.div
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          whileTap={{ scale: 0.98 }}
+        <div
           onClick={() => {
             setInvoiceListInitialFilter('all');
             setActiveTab('invoices');
           }}
-          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#C6A15B] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#C6A15B] hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
           role="button"
           tabIndex={0}
           aria-label="View all billed invoices"
@@ -166,17 +190,15 @@ export const DashboardPage: React.FC = () => {
             <span>Across {finalizedActiveInvoices.length} finalized invoices</span>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7832]" />
           </div>
-        </motion.div>
+        </div>
 
         {/* Total Received -> Invoices List filtered to Paid */}
-        <motion.div
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          whileTap={{ scale: 0.98 }}
+        <div
           onClick={() => {
             setInvoiceListInitialFilter('paid');
             setActiveTab('invoices');
           }}
-          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#15803D] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#15803D] hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
           role="button"
           tabIndex={0}
           aria-label="View paid invoices"
@@ -198,16 +220,14 @@ export const DashboardPage: React.FC = () => {
             </span>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#15803D]" />
           </div>
-        </motion.div>
+        </div>
 
         {/* Pending Receivables (Due Soon) -> Dedicated Pending Invoices View */}
-        <motion.div
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          whileTap={{ scale: 0.98 }}
+        <div
           onClick={() => {
             setActiveTab('pending_invoices');
           }}
-          className="bg-white border-2 border-[#C6A15B]/50 hover:border-[#C6A15B] rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group bg-linear-to-br from-white to-amber-50/20"
+          className="bg-white border-2 border-[#C6A15B]/50 hover:border-[#C6A15B] rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group bg-linear-to-br from-white to-amber-50/20"
           role="button"
           tabIndex={0}
           aria-label="Open Pending Invoices View"
@@ -227,17 +247,15 @@ export const DashboardPage: React.FC = () => {
             <span>Within active payment terms (≤ {configuredWindowDays}d)</span>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7832]" />
           </div>
-        </motion.div>
+        </div>
 
         {/* Overdue Amount -> Invoices List filtered to Overdue */}
-        <motion.div
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          whileTap={{ scale: 0.98 }}
+        <div
           onClick={() => {
             setInvoiceListInitialFilter('overdue');
             setActiveTab('invoices');
           }}
-          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#B91C1C] hover:shadow-md transition-all duration-200 cursor-pointer group"
+          className="bg-white border border-[#DAD8D2] rounded-2xl p-5 shadow-xs hover:border-[#B91C1C] hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
           role="button"
           tabIndex={0}
           aria-label="View overdue invoices"
@@ -257,7 +275,7 @@ export const DashboardPage: React.FC = () => {
             <span>Requires prompt client reminder</span>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#B91C1C]" />
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* ================= COLLECTION RATIO BAR ================= */}

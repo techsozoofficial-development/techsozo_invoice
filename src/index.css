@@ -61,8 +61,31 @@
     background: #DAD8D2;
     border-radius: 3px;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #B9BCC4;
+  /* Performance & hardware acceleration helpers */
+  .gpu-layer {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+}
+
+/* Glassmorphism performance optimizations */
+@layer utilities {
+  .glass-card {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Reduced motion support for accessibility and lower-powered devices */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -8,6 +8,32 @@ export type InvoiceStatus =
 
 export type PaymentMode = 'bank_transfer' | 'upi' | 'cheque' | 'cash' | 'card';
 
+export type BillingFrequency = 'Monthly' | 'One-Time' | 'Custom';
+
+export interface ClientService {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  rate?: number | null; // in INR (optional)
+  billingFrequency: BillingFrequency;
+  adSpend?: number | null; // Platform ad spend (reference only, never billed by TechSozo)
+}
+
+export type AdBudgetPeriod = 'Monthly' | 'One-Time Campaign';
+
+export interface ClientAdBudget {
+  period: AdBudgetPeriod;
+  amount?: number | null;
+  campaignName?: string;
+}
+
+export interface ClientDeliverables {
+  posterCount?: number | null;
+  reelCount?: number | null;
+  shootingSessions?: number | null;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -19,6 +45,10 @@ export interface Client {
   state: string;
   pincode: string;
   gstin?: string;
+  monthlyServiceFee?: number | null; // Total recurring monthly fee charged by TechSozo
+  deliverables?: ClientDeliverables | null; // Optional manual deliverables counts (posters, reels, shooting sessions)
+  adBudget?: ClientAdBudget | null; // Direct platform ad budget (reference only, paid directly by client to Meta/Google)
+  services?: ClientService[];
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +72,9 @@ export interface InvoiceLineItem {
   quantity: number;
   rate: number;
   amount: number; // quantity * rate
+  posterCount?: number | null;
+  reelCount?: number | null;
+  shootingSessions?: number | null;
 }
 
 export interface GSTConfigSnapshot {
@@ -79,8 +112,8 @@ export interface CompanySettings {
   website: string;
   pan?: string;
   gstin?: string;
-  gstEnabled: boolean;
-  defaultGstRate: number;
+  gstEnabled?: boolean;
+  defaultGstRate?: number;
   defaultPaymentTermsDays: number;
   defaultNotes: string;
   defaultTerms: string;
@@ -111,11 +144,15 @@ export interface Invoice {
   clientSnapshot: Client;
   issueDate: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD
+  billingPeriod?: string;
+  billingChoice?: 'package' | 'itemized' | 'custom';
+  deliverables?: ClientDeliverables | null;
+  adBudget?: ClientAdBudget | null;
   items: InvoiceLineItem[];
   subtotal: number;
   discountPercent: number;
   discountAmount: number;
-  taxSnapshot: GSTConfigSnapshot;
+  taxSnapshot?: GSTConfigSnapshot;
   roundOff: number;
   total: number;
   amountInWords: string;

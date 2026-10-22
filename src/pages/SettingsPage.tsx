@@ -7,14 +7,12 @@ import {
   Building2,
   Landmark,
   FileText,
-  Percent,
   Database,
   Download,
   Upload,
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
-  ShieldAlert,
   Info,
 } from 'lucide-react';
 
@@ -29,7 +27,7 @@ export const SettingsPage: React.FC = () => {
     addToast,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'company' | 'bank' | 'gst' | 'terms' | 'backup'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'bank' | 'terms' | 'backup'>('company');
 
   // Company Form State
   const [compForm, setCompForm] = useState<CompanySettings>(companySettings);
@@ -51,15 +49,6 @@ export const SettingsPage: React.FC = () => {
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateBankDetails(bankForm);
-  };
-
-  const handleSaveGst = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await updateCompanySettings({
-      gstEnabled: compForm.gstEnabled,
-      defaultGstRate: compForm.defaultGstRate,
-      gstin: compForm.gstin,
-    });
   };
 
   const handleSaveTerms = async (e: React.FormEvent) => {
@@ -139,9 +128,9 @@ export const SettingsPage: React.FC = () => {
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
         onConfirm={handleConfirmReset}
-        title="Reset to Initial Demo State?"
-        description="This will clear all changes and restore the original 3 sample clients, 4 services, and seed invoices. Make sure to export a backup if you have important data."
-        confirmLabel="Reset Database"
+        title="Reset to Clean Workspace?"
+        description="This will clear all transactions, invoices, clients, and services to provide a clean, production-ready workspace. Make sure to export a backup if you have important data."
+        confirmLabel="Reset to Clean Workspace"
         variant="danger"
       />
 
@@ -169,7 +158,7 @@ export const SettingsPage: React.FC = () => {
           Agency & System Settings
         </h2>
         <p className="text-sm text-[#5C6068]">
-          Configure legal entity data, remittance accounts, GST tax rules, and local database backups.
+          Configure legal entity data, remittance accounts, terms & notes, and local database backups.
         </p>
       </div>
 
@@ -178,7 +167,6 @@ export const SettingsPage: React.FC = () => {
         {[
           { id: 'company', label: 'Company Profile', icon: <Building2 className="w-4 h-4" /> },
           { id: 'bank', label: 'Bank Details', icon: <Landmark className="w-4 h-4" /> },
-          { id: 'gst', label: 'GST Configuration', icon: <Percent className="w-4 h-4" /> },
           { id: 'terms', label: 'Terms & Notes', icon: <FileText className="w-4 h-4" /> },
           { id: 'backup', label: 'Backup & Restore', icon: <Database className="w-4 h-4" /> },
         ].map((tab) => {
@@ -252,7 +240,7 @@ export const SettingsPage: React.FC = () => {
 
             <div>
               <label className="block font-medium text-[#4C5056] mb-1">
-                State (Reference for GST)
+                State
               </label>
               <input
                 type="text"
@@ -296,7 +284,7 @@ export const SettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#DAD8D2] flex justify-end">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-[44px]"
+              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-11"
             >
               Save Company Profile
             </button>
@@ -384,7 +372,7 @@ export const SettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#DAD8D2] flex justify-end">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-[44px]"
+              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-11"
             >
               Save Bank Details
             </button>
@@ -392,101 +380,7 @@ export const SettingsPage: React.FC = () => {
         </form>
       )}
 
-      {/* Tab 3: GST Configuration */}
-      {activeTab === 'gst' && (
-        <form onSubmit={handleSaveGst} className="bg-white p-6 rounded-2xl border border-[#DAD8D2] shadow-xs space-y-5 max-w-2xl text-xs">
-          <div className="border-b border-[#DAD8D2] pb-3">
-            <h3 className="font-heading font-bold text-base text-[#1A1B1E]">
-              GST Tax Rules & Snapshotting
-            </h3>
-            <p className="text-[#5C6068]">
-              Control whether GST calculations and SAC codes are computed. (Default is OFF per requirements)
-            </p>
-          </div>
-
-          {/* CA Verification Caution Box */}
-          <div className="p-4 bg-amber-50 border border-[#C6A15B]/40 rounded-xl text-amber-900 flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-[#C6A15B] shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <strong className="block font-heading font-semibold text-xs uppercase tracking-wider">
-                Chartered Accountant (CA) Verification Mandatory
-              </strong>
-              <p className="leading-relaxed">
-                Before switching GST ON for real commercial invoicing, verify your turnover threshold and GST registration status with your practicing CA. Finalized invoices lock their tax snapshot permanently so historical invoices are never altered if tax settings change later.
-              </p>
-            </div>
-          </div>
-
-          {/* GST Toggle Switch */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAF9F6] border border-[#DAD8D2]">
-            <div>
-              <span className="font-heading font-bold text-sm text-[#1A1B1E] block mb-0.5">
-                Enable GST Tax Computation
-              </span>
-              <p className="text-[#5C6068]">
-                {compForm.gstEnabled
-                  ? 'Currently ON: Document title becomes "Tax Invoice", CGST+SGST or IGST computed.'
-                  : 'Currently OFF: Document title is "Invoice", zero tax lines calculated.'}
-              </p>
-            </div>
-
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={compForm.gstEnabled}
-                onChange={(e) => setCompForm({ ...compForm, gstEnabled: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C6A15B]"></div>
-            </label>
-          </div>
-
-          {compForm.gstEnabled && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-[#DAD8D2] bg-[#FAF9F6] animate-in fade-in">
-              <div>
-                <label className="block font-medium text-[#4C5056] mb-1">
-                  Default GST Rate (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="28"
-                  value={compForm.defaultGstRate}
-                  onChange={(e) => setCompForm({ ...compForm, defaultGstRate: parseFloat(e.target.value) || 18 })}
-                  className="w-full px-3 py-2 text-sm bg-white border border-[#DAD8D2] rounded-xl font-medium focus:ring-2 focus:ring-[#C6A15B]"
-                />
-                <span className="text-[11px] text-[#5C6068] mt-1 block">
-                  Same-state = {compForm.defaultGstRate / 2}% CGST + {compForm.defaultGstRate / 2}% SGST.
-                </span>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#4C5056] mb-1">
-                  Company GSTIN
-                </label>
-                <input
-                  type="text"
-                  value={compForm.gstin || ''}
-                  onChange={(e) => setCompForm({ ...compForm, gstin: e.target.value })}
-                  placeholder="e.g. 33AAAAA0000A1Z5"
-                  className="w-full px-3 py-2 text-sm bg-white border border-[#DAD8D2] rounded-xl font-mono uppercase focus:ring-2 focus:ring-[#C6A15B]"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="pt-3 border-t border-[#DAD8D2] flex justify-end">
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-[44px]"
-            >
-              Save GST Rules
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Tab 4: Terms & Notes */}
+      {/* Tab 3: Terms & Notes */}
       {activeTab === 'terms' && (
         <form onSubmit={handleSaveTerms} className="bg-white p-6 rounded-2xl border border-[#DAD8D2] shadow-xs space-y-4 max-w-2xl text-xs">
           <h3 className="font-heading font-bold text-base text-[#1A1B1E]">
@@ -546,7 +440,7 @@ export const SettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#DAD8D2] flex justify-end">
             <button
               type="submit"
-              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-[44px]"
+              className="px-5 py-2.5 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] font-heading font-semibold text-xs rounded-xl shadow-xs min-h-11"
             >
               Save Defaults
             </button>
@@ -554,7 +448,7 @@ export const SettingsPage: React.FC = () => {
         </form>
       )}
 
-      {/* Tab 5: Backup & Restore */}
+      {/* Tab 4: Backup & Restore */}
       {activeTab === 'backup' && (
         <div className="bg-white p-6 rounded-2xl border border-[#DAD8D2] shadow-xs space-y-6 max-w-2xl text-xs">
           <div>
@@ -579,7 +473,7 @@ export const SettingsPage: React.FC = () => {
             <button
               type="button"
               onClick={handleExportBackup}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] font-semibold rounded-xl shrink-0 min-h-[44px]"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] font-semibold rounded-xl shrink-0 min-h-11"
             >
               <Download className="w-4 h-4 text-[#C6A15B]" />
               <span>Export Backup</span>
@@ -638,7 +532,7 @@ export const SettingsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#DAD8D2] hover:border-[#C6A15B] text-[#292A2D] font-semibold rounded-xl min-h-[44px]"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#DAD8D2] hover:border-[#C6A15B] text-[#292A2D] font-semibold rounded-xl min-h-11"
             >
               <Upload className="w-4 h-4 text-[#C6A15B]" />
               <span>Choose Backup File (.json)</span>
@@ -649,19 +543,19 @@ export const SettingsPage: React.FC = () => {
           <div className="p-4 rounded-xl border border-red-200 bg-red-50/50 flex items-start justify-between gap-4">
             <div>
               <span className="font-heading font-bold text-sm text-red-800 block mb-1">
-                Demo Reset to Factory Seed
+                Reset to Clean Workspace
               </span>
               <p className="text-red-700 leading-relaxed max-w-md">
-                Restores the original 3 clients (Cauvery Real Estate, Shree Arasu Motors, RK Nutrition) and initial test invoices.
+                Clears all transactions, invoices, clients, and services, restoring a clean production workspace for live client invoicing.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setIsResetConfirmOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shrink-0 min-h-[44px]"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shrink-0 min-h-11"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Reset Demo Seed</span>
+              <span>Reset to Clean Workspace</span>
             </button>
           </div>
         </div>

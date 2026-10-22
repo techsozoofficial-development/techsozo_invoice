@@ -7,7 +7,6 @@ import {
   BankDetails,
   FYSequenceRecord,
 } from '../types';
-import { calculateInvoiceTotals } from '../utils/calculations';
 
 export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
   companyName: 'TechSozo',
@@ -19,8 +18,6 @@ export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
   phone: '+91 98424 01234',
   email: 'billing@techsozo.in',
   website: 'https://techsozo.in',
-  gstEnabled: false, // OFF by default as per document
-  defaultGstRate: 18,
   defaultPaymentTermsDays: 15,
   defaultNotes:
     'Thank you for partnering with TechSozo. Please make payment via NEFT/IMPS/UPI to the bank account detailed below within 15 days.',
@@ -39,303 +36,22 @@ export const INITIAL_BANK_DETAILS: BankDetails = {
   upiId: 'techsozo@hdfcbank',
 };
 
-export const INITIAL_CLIENTS: Client[] = [
-  {
-    id: 'client-1',
-    name: 'Cauvery Real Estate & Builders',
-    contactPerson: 'Mr. R. Senthil Kumar',
-    email: 'senthil@cauverybuilders.com',
-    phone: '+91 98432 11223',
-    address: '42, Collector Office Road, Cantonment',
-    city: 'Tiruchirappalli',
-    state: 'Tamil Nadu',
-    pincode: '620001',
-    gstin: '33AABCC1234D1Z5',
-    active: true,
-    createdAt: '2026-08-01T09:00:00Z',
-    updatedAt: '2026-08-01T09:00:00Z',
-  },
-  {
-    id: 'client-2',
-    name: 'Shree Arasu Motors',
-    contactPerson: 'Mr. K. Murugan',
-    email: 'accounts@shreearasucars.com',
-    phone: '+91 97890 33445',
-    address: '110, Karur Bypass Road, Annamalai Nagar',
-    city: 'Tiruchirappalli',
-    state: 'Tamil Nadu',
-    pincode: '620018',
-    gstin: '33AABCS5678E1Z8',
-    active: true,
-    createdAt: '2026-08-15T10:00:00Z',
-    updatedAt: '2026-08-15T10:00:00Z',
-  },
-  {
-    id: 'client-3',
-    name: 'RK Wellness & Nutrition Center',
-    contactPerson: 'Ms. Priya Raman',
-    email: 'priya@rknutrition.in',
-    phone: '+91 94431 88776',
-    address: '78, North Chithirai Street',
-    city: 'Srirangam, Tiruchirappalli',
-    state: 'Tamil Nadu',
-    pincode: '620006',
-    gstin: '',
-    active: true,
-    createdAt: '2026-09-01T11:00:00Z',
-    updatedAt: '2026-09-01T11:00:00Z',
-  },
-];
-
-export const INITIAL_SERVICES: ServiceItem[] = [
-  {
-    id: 'srv-1',
-    name: 'SEO Strategy & Monthly Optimization',
-    description: 'Comprehensive technical SEO, keyword ranking growth, backlink outreach & monthly audit.',
-    defaultRate: 25000,
-    sac: '998361',
-    active: true,
-    createdAt: '2026-08-01T00:00:00Z',
-  },
-  {
-    id: 'srv-2',
-    name: 'Social Media Management & Video Reels',
-    description: 'Monthly 12 Instagram Reels, carousels, scriptwriting, shoot supervision and community management.',
-    defaultRate: 35000,
-    sac: '998361',
-    active: true,
-    createdAt: '2026-08-01T00:00:00Z',
-  },
-  {
-    id: 'srv-3',
-    name: 'Meta & Google Ads Campaign Management',
-    description: 'High-conversion lead generation campaigns, creative A/B testing, and weekly ad spend optimization.',
-    defaultRate: 20000,
-    sac: '998361',
-    active: true,
-    createdAt: '2026-08-01T00:00:00Z',
-  },
-  {
-    id: 'srv-4',
-    name: 'Brand Content Writing & Copywriting',
-    description: 'Conversion-focused website copy, email newsletters, and thought leadership articles.',
-    defaultRate: 15000,
-    sac: '998361',
-    active: true,
-    createdAt: '2026-08-01T00:00:00Z',
-  },
-];
-
-// Helper to seed calculations
-const inv1Calc = calculateInvoiceTotals({
-  items: [
-    { id: 'item-1', serviceId: 'srv-2', description: 'Social Media Management & Video Reels (Sep 2026 Retainer)', sac: '998361', quantity: 1, rate: 35000, amount: 35000 },
-    { id: 'item-2', serviceId: 'srv-3', description: 'Meta Ads Management & Lead Gen (Sep 2026)', sac: '998361', quantity: 1, rate: 20000, amount: 20000 },
-  ],
-  discountPercent: 0,
-  gstEnabled: false,
-  gstRate: 18,
-  companyState: 'Tamil Nadu',
-  clientState: 'Tamil Nadu',
-});
-
-const inv2Calc = calculateInvoiceTotals({
-  items: [
-    { id: 'item-3', serviceId: 'srv-2', description: 'Automotive Festival Video Reels Campaign (4 Videos)', sac: '998361', quantity: 1, rate: 40000, amount: 40000 },
-  ],
-  discountPercent: 0,
-  gstEnabled: false,
-  gstRate: 18,
-  companyState: 'Tamil Nadu',
-  clientState: 'Tamil Nadu',
-});
-
-const inv3Calc = calculateInvoiceTotals({
-  items: [
-    { id: 'item-4', serviceId: 'srv-1', description: 'Local SEO & Google Business Profile Optimization', sac: '998361', quantity: 1, rate: 25000, amount: 25000 },
-    { id: 'item-5', serviceId: 'srv-4', description: 'Nutrition Blog Articles & Health Guides (4 Articles)', sac: '998361', quantity: 1, rate: 10000, amount: 10000 },
-  ],
-  discountPercent: 5,
-  gstEnabled: false,
-  gstRate: 18,
-  companyState: 'Tamil Nadu',
-  clientState: 'Tamil Nadu',
-});
-
-export const INITIAL_INVOICES: Invoice[] = [
-  {
-    id: 'inv-1',
-    invoiceNumber: 'INV/26-27/001',
-    financialYear: '26-27',
-    sequenceNumber: 1,
-    clientId: 'client-1',
-    clientSnapshot: INITIAL_CLIENTS[0],
-    issueDate: '2026-09-01',
-    dueDate: '2026-09-16',
-    items: [
-      { id: 'item-1', serviceId: 'srv-2', description: 'Social Media Management & Video Reels (Sep 2026 Retainer)', sac: '998361', quantity: 1, rate: 35000, amount: 35000 },
-      { id: 'item-2', serviceId: 'srv-3', description: 'Meta Ads Management & Lead Gen (Sep 2026)', sac: '998361', quantity: 1, rate: 20000, amount: 20000 },
-    ],
-    subtotal: inv1Calc.subtotal,
-    discountPercent: inv1Calc.discountPercent,
-    discountAmount: inv1Calc.discountAmount,
-    taxSnapshot: inv1Calc.taxSnapshot,
-    roundOff: inv1Calc.roundOff,
-    total: inv1Calc.total,
-    amountInWords: inv1Calc.amountInWords,
-    notes: INITIAL_COMPANY_SETTINGS.defaultNotes,
-    paymentTerms: INITIAL_COMPANY_SETTINGS.defaultTerms,
-    bankDetailsSnapshot: INITIAL_BANK_DETAILS,
-    companySnapshot: INITIAL_COMPANY_SETTINGS,
-    status: 'paid',
-    isFinalized: true,
-    finalizedAt: '2026-09-01T10:00:00Z',
-    isCancelled: false,
-    cancelledAt: null,
-    cancellationReason: null,
-    createdAt: '2026-09-01T09:30:00Z',
-    updatedAt: '2026-09-05T14:00:00Z',
-  },
-  {
-    id: 'inv-2',
-    invoiceNumber: 'INV/26-27/002',
-    financialYear: '26-27',
-    sequenceNumber: 2,
-    clientId: 'client-2',
-    clientSnapshot: INITIAL_CLIENTS[1],
-    issueDate: '2026-09-20',
-    dueDate: '2026-10-05',
-    items: [
-      { id: 'item-3', serviceId: 'srv-2', description: 'Automotive Festival Video Reels Campaign (4 Videos)', sac: '998361', quantity: 1, rate: 40000, amount: 40000 },
-    ],
-    subtotal: inv2Calc.subtotal,
-    discountPercent: inv2Calc.discountPercent,
-    discountAmount: inv2Calc.discountAmount,
-    taxSnapshot: inv2Calc.taxSnapshot,
-    roundOff: inv2Calc.roundOff,
-    total: inv2Calc.total,
-    amountInWords: inv2Calc.amountInWords,
-    notes: INITIAL_COMPANY_SETTINGS.defaultNotes,
-    paymentTerms: INITIAL_COMPANY_SETTINGS.defaultTerms,
-    bankDetailsSnapshot: INITIAL_BANK_DETAILS,
-    companySnapshot: INITIAL_COMPANY_SETTINGS,
-    status: 'overdue',
-    isFinalized: true,
-    finalizedAt: '2026-09-20T11:00:00Z',
-    isCancelled: false,
-    cancelledAt: null,
-    cancellationReason: null,
-    createdAt: '2026-09-20T10:45:00Z',
-    updatedAt: '2026-09-28T16:00:00Z',
-  },
-  {
-    id: 'inv-3',
-    invoiceNumber: 'INV/26-27/003',
-    financialYear: '26-27',
-    sequenceNumber: 3,
-    clientId: 'client-3',
-    clientSnapshot: INITIAL_CLIENTS[2],
-    issueDate: '2026-10-10',
-    dueDate: '2026-10-25',
-    items: [
-      { id: 'item-4', serviceId: 'srv-1', description: 'Local SEO & Google Business Profile Optimization', sac: '998361', quantity: 1, rate: 25000, amount: 25000 },
-      { id: 'item-5', serviceId: 'srv-4', description: 'Nutrition Blog Articles & Health Guides (4 Articles)', sac: '998361', quantity: 1, rate: 10000, amount: 10000 },
-    ],
-    subtotal: inv3Calc.subtotal,
-    discountPercent: inv3Calc.discountPercent,
-    discountAmount: inv3Calc.discountAmount,
-    taxSnapshot: inv3Calc.taxSnapshot,
-    roundOff: inv3Calc.roundOff,
-    total: inv3Calc.total,
-    amountInWords: inv3Calc.amountInWords,
-    notes: INITIAL_COMPANY_SETTINGS.defaultNotes,
-    paymentTerms: INITIAL_COMPANY_SETTINGS.defaultTerms,
-    bankDetailsSnapshot: INITIAL_BANK_DETAILS,
-    companySnapshot: INITIAL_COMPANY_SETTINGS,
-    status: 'sent',
-    isFinalized: true,
-    finalizedAt: '2026-10-10T12:00:00Z',
-    isCancelled: false,
-    cancelledAt: null,
-    cancellationReason: null,
-    createdAt: '2026-10-10T11:30:00Z',
-    updatedAt: '2026-10-10T12:00:00Z',
-  },
-  {
-    id: 'draft-1',
-    invoiceNumber: null,
-    financialYear: null,
-    sequenceNumber: null,
-    clientId: 'client-1',
-    clientSnapshot: INITIAL_CLIENTS[0],
-    issueDate: '2026-10-17',
-    dueDate: '2026-11-01',
-    items: [
-      { id: 'item-draft-1', serviceId: 'srv-2', description: 'Social Media Management & Video Reels (Oct 2026 Retainer)', sac: '998361', quantity: 1, rate: 35000, amount: 35000 },
-    ],
-    subtotal: 35000,
-    discountPercent: 0,
-    discountAmount: 0,
-    taxSnapshot: {
-      enabled: false,
-      companyState: 'Tamil Nadu',
-      clientState: 'Tamil Nadu',
-      isInterstate: false,
-      cgstRate: 0,
-      sgstRate: 0,
-      igstRate: 0,
-      cgstAmount: 0,
-      sgstAmount: 0,
-      igstAmount: 0,
-      totalTax: 0,
-    },
-    roundOff: 0,
-    total: 35000,
-    amountInWords: 'Thirty-Five Thousand Rupees Only',
-    notes: INITIAL_COMPANY_SETTINGS.defaultNotes,
-    paymentTerms: INITIAL_COMPANY_SETTINGS.defaultTerms,
-    bankDetailsSnapshot: INITIAL_BANK_DETAILS,
-    companySnapshot: INITIAL_COMPANY_SETTINGS,
-    status: 'draft',
-    isFinalized: false,
-    finalizedAt: null,
-    isCancelled: false,
-    cancelledAt: null,
-    cancellationReason: null,
-    createdAt: '2026-10-17T14:00:00Z',
-    updatedAt: '2026-10-17T14:00:00Z',
-  },
-];
-
-export const INITIAL_PAYMENTS: Payment[] = [
-  {
-    id: 'pay-1',
-    invoiceId: 'inv-1',
-    amount: 55000,
-    paymentDate: '2026-09-05',
-    mode: 'bank_transfer',
-    reference: 'HDFC-NEFT-908123984',
-    notes: 'Full payment received via NEFT',
-    recordedAt: '2026-09-05T14:00:00Z',
-    isReversed: false,
-  },
-  {
-    id: 'pay-2',
-    invoiceId: 'inv-2',
-    amount: 20000,
-    paymentDate: '2026-09-28',
-    mode: 'upi',
-    reference: 'UPI/229049182390/arasu',
-    notes: 'Advance part payment received via UPI',
-    recordedAt: '2026-09-28T16:00:00Z',
-    isReversed: false,
-  },
-];
+// Clean initial production data collections (empty workspace)
+export const INITIAL_CLIENTS: Client[] = [];
+export const INITIAL_SERVICES: ServiceItem[] = [];
+export const INITIAL_INVOICES: Invoice[] = [];
+export const INITIAL_PAYMENTS: Payment[] = [];
 
 export const INITIAL_SEQUENCES: FYSequenceRecord[] = [
   {
     financialYear: '26-27',
-    lastSequenceNumber: 3,
+    lastSequenceNumber: 0,
     cancelledNumbers: [],
   },
 ];
+
+// Signatures used to safely identify and purge preloaded demo seed records from existing storage
+export const KNOWN_DEMO_CLIENT_IDS = ['client-1', 'client-2', 'client-3'];
+export const KNOWN_DEMO_SERVICE_IDS = ['srv-1', 'srv-2', 'srv-3', 'srv-4'];
+export const KNOWN_DEMO_INVOICE_IDS = ['inv-1', 'inv-2', 'inv-3', 'draft-1'];
+export const KNOWN_DEMO_PAYMENT_IDS = ['pay-1', 'pay-2'];

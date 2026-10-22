@@ -24,6 +24,10 @@ import {
   INITIAL_INVOICES,
   INITIAL_PAYMENTS,
   INITIAL_SEQUENCES,
+  KNOWN_DEMO_CLIENT_IDS,
+  KNOWN_DEMO_SERVICE_IDS,
+  KNOWN_DEMO_INVOICE_IDS,
+  KNOWN_DEMO_PAYMENT_IDS,
 } from '../data/seedData';
 import {
   calculateInvoiceTotals,
@@ -33,6 +37,60 @@ import {
   calculateOutstandingBalance,
   calculateDefaultDueDate,
 } from '../utils/calculations';
+
+function isDemoClientRecord(c: Client): boolean {
+  if (KNOWN_DEMO_CLIENT_IDS.includes(c.id)) {
+    // Only classify as demo if it matches known demo business details
+    const nameMatch =
+      c.name === 'Cauvery Real Estate & Builders' ||
+      c.name === 'Shree Arasu Motors' ||
+      c.name === 'RK Wellness & Nutrition Center';
+    const emailMatch =
+      c.email === 'senthil@cauverybuilders.com' ||
+      c.email === 'accounts@shreearasucars.com' ||
+      c.email === 'priya@rknutrition.in';
+    return nameMatch || emailMatch;
+  }
+  return false;
+}
+
+function isDemoServiceRecord(s: ServiceItem): boolean {
+  if (KNOWN_DEMO_SERVICE_IDS.includes(s.id)) {
+    return (
+      s.name === 'SEO Strategy & Monthly Optimization' ||
+      s.name === 'Social Media Management & Video Reels' ||
+      s.name === 'Meta & Google Ads Campaign Management' ||
+      s.name === 'Brand Content Writing & Copywriting'
+    );
+  }
+  return false;
+}
+
+function isDemoInvoiceRecord(inv: Invoice): boolean {
+  if (KNOWN_DEMO_INVOICE_IDS.includes(inv.id)) {
+    return true;
+  }
+  if (['INV/26-27/001', 'INV/26-27/002', 'INV/26-27/003'].includes(inv.invoiceNumber || '')) {
+    const isDemoClientName =
+      inv.clientSnapshot?.name === 'Cauvery Real Estate & Builders' ||
+      inv.clientSnapshot?.name === 'Shree Arasu Motors' ||
+      inv.clientSnapshot?.name === 'RK Wellness & Nutrition Center';
+    if (isDemoClientName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isDemoPaymentRecord(p: Payment): boolean {
+  if (KNOWN_DEMO_PAYMENT_IDS.includes(p.id)) {
+    return true;
+  }
+  if (KNOWN_DEMO_INVOICE_IDS.includes(p.invoiceId)) {
+    return true;
+  }
+  return false;
+}
 
 const STORAGE_KEYS = {
   CLIENTS: 'techsozo_clients_v1',
@@ -47,6 +105,8 @@ const STORAGE_KEYS = {
 };
 
 export class LocalStorageRepository implements IInvoiceRepository {
+  private memoryCache: Map<string, any> = new Map();
+
   constructor() {
     this.ensureInitialized();
   }
@@ -75,12 +135,94 @@ export class LocalStorageRepository implements IInvoiceRepository {
     if (!localStorage.getItem(STORAGE_KEYS.SEQUENCES)) {
       localStorage.setItem(STORAGE_KEYS.SEQUENCES, JSON.stringify(INITIAL_SEQUENCES));
     }
+
+    this.purgeDemoDataIfPresent();
+  }
+
+  private purgeDemoDataIfPresent(): void {
+    try {
+      const purgeKey = 'techsozo_demo_purged_v2';
+      if (localStorage.getItem(purgeKey) === 'true') {
+        return;
+      }
+
+      // Purge demo clients while preserving user-created or customized clients
+      const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
+      if (rawClients) {
+        const clients: Client[] = JSON.parse(rawClients);
+        const filtered = clients.filter((c) => !isDemoClientRecord(c));
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(filtered));
+        this.memoryCache.set(STORAGE_KEYS.CLIENTS, filtered);
+      }
+
+      // Purge demo services while preserving user catalog services
+      const rawServices = localStorage.getItem(STORAGE_KEYS.SERVICES);
+      if (rawServices) {
+        const services: ServiceItem[] = JSON.parse(rawServices);
+        const filtered = services.filter((s) => !isDemoServiceRecord(s));
+        localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(filtered));
+        this.memoryCache.set(STORAGE_KEYS.SERVICES, filtered);
+      }
+
+      // Purge demo invoices while preserving user invoices
+      const rawInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
+      let remainingInvoices: Invoice[] = [];
+      if (rawInvoices) {
+        const invoices: Invoice[] = JSON.parse(rawInvoices);
+        remainingInvoices = invoices.filter((inv) => !isDemoInvoiceRecord(inv));
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(remainingInvoices));
+        this.memoryCache.set(STORAGE_KEYS.INVOICES, remainingInvoices);
+      }
+
+      // Purge demo payments while preserving real transactions
+      const rawPayments = localStorage.getItem(STORAGE_KEYS.PAYMENTS);
+      if (rawPayments) {
+        const payments: Payment[] = JSON.parse(rawPayments);
+        const filtered = payments.filter((p) => !isDemoPaymentRecord(p));
+        localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(filtered));
+        this.memoryCache.set(STORAGE_KEYS.PAYMENTS, filtered);
+      }
+
+      // Recalculate sequences cleanly based on remaining genuine finalized invoices
+      const rawSequences = localStorage.getItem(STORAGE_KEYS.SEQUENCES);
+      if (rawSequences) {
+        const sequences: FYSequenceRecord[] = JSON.parse(rawSequences);
+        const updatedSequences = sequences.map((seq) => {
+          const genuineFyInvoices = remainingInvoices.filter(
+            (inv) => inv.financialYear === seq.financialYear && inv.isFinalized
+          );
+          const maxSeq = genuineFyInvoices.reduce(
+            (max, inv) => Math.max(max, inv.sequenceNumber || 0),
+            0
+          );
+          return {
+            ...seq,
+            lastSequenceNumber: maxSeq,
+            cancelledNumbers: seq.cancelledNumbers.filter(
+              (n) => n > 0 && n <= maxSeq
+            ),
+          };
+        });
+        localStorage.setItem(STORAGE_KEYS.SEQUENCES, JSON.stringify(updatedSequences));
+        this.memoryCache.set(STORAGE_KEYS.SEQUENCES, updatedSequences);
+      }
+
+      localStorage.removeItem('techsozo_read_notifs');
+      localStorage.setItem(purgeKey, 'true');
+    } catch (e) {
+      console.error('Error during demo data purge:', e);
+    }
   }
 
   private getItems<T>(key: string, fallback: T): T {
+    if (this.memoryCache.has(key)) {
+      return this.memoryCache.get(key) as T;
+    }
     try {
       const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : fallback;
+      const parsed = data ? JSON.parse(data) : fallback;
+      this.memoryCache.set(key, parsed);
+      return parsed;
     } catch (e) {
       console.error(`Error reading ${key} from storage:`, e);
       return fallback;
@@ -89,6 +231,7 @@ export class LocalStorageRepository implements IInvoiceRepository {
 
   private setItems<T>(key: string, value: T): void {
     try {
+      this.memoryCache.set(key, value);
       localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
       console.error(`Error saving ${key} to storage:`, e);
@@ -238,10 +381,6 @@ export class LocalStorageRepository implements IInvoiceRepository {
     const calc = calculateInvoiceTotals({
       items,
       discountPercent: invoiceData.discountPercent ?? 0,
-      gstEnabled: companySettings.gstEnabled,
-      gstRate: companySettings.defaultGstRate || 18,
-      companyState: companySettings.state || 'Tamil Nadu',
-      clientState: client.state || 'Tamil Nadu',
     });
 
     if (invoiceData.id) {
@@ -259,6 +398,10 @@ export class LocalStorageRepository implements IInvoiceRepository {
         clientSnapshot: client,
         issueDate,
         dueDate,
+        billingPeriod: invoiceData.billingPeriod ?? existing.billingPeriod,
+        billingChoice: invoiceData.billingChoice ?? existing.billingChoice ?? 'itemized',
+        deliverables: invoiceData.deliverables !== undefined ? invoiceData.deliverables : (existing.deliverables ?? client.deliverables),
+        adBudget: invoiceData.adBudget !== undefined ? invoiceData.adBudget : (existing.adBudget ?? client.adBudget),
         items,
         subtotal: calc.subtotal,
         discountPercent: calc.discountPercent,
@@ -287,6 +430,10 @@ export class LocalStorageRepository implements IInvoiceRepository {
         clientSnapshot: client,
         issueDate,
         dueDate,
+        billingPeriod: invoiceData.billingPeriod,
+        billingChoice: invoiceData.billingChoice || 'itemized',
+        deliverables: invoiceData.deliverables !== undefined ? invoiceData.deliverables : client.deliverables,
+        adBudget: invoiceData.adBudget !== undefined ? invoiceData.adBudget : client.adBudget,
         items,
         subtotal: calc.subtotal,
         discountPercent: calc.discountPercent,
@@ -359,10 +506,6 @@ export class LocalStorageRepository implements IInvoiceRepository {
     const calc = calculateInvoiceTotals({
       items: draft.items,
       discountPercent: draft.discountPercent,
-      gstEnabled: companySettings.gstEnabled,
-      gstRate: companySettings.defaultGstRate || 18,
-      companyState: companySettings.state || 'Tamil Nadu',
-      clientState: client.state || 'Tamil Nadu',
     });
 
     const now = new Date().toISOString();
@@ -801,14 +944,28 @@ export class LocalStorageRepository implements IInvoiceRepository {
   }
 
   async resetToDemoSeed(): Promise<void> {
-    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
-    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(INITIAL_SERVICES));
-    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(INITIAL_INVOICES));
-    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(INITIAL_PAYMENTS));
+    this.memoryCache.clear();
+    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify([]));
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_COMPANY_SETTINGS));
     localStorage.setItem(STORAGE_KEYS.BANK, JSON.stringify(INITIAL_BANK_DETAILS));
-    localStorage.setItem(STORAGE_KEYS.SEQUENCES, JSON.stringify(INITIAL_SEQUENCES));
+    localStorage.setItem(
+      STORAGE_KEYS.SEQUENCES,
+      JSON.stringify([{ financialYear: '26-27', lastSequenceNumber: 0, cancelledNumbers: [] }])
+    );
     localStorage.removeItem('techsozo_read_notifs');
+    localStorage.setItem('techsozo_demo_purged_v2', 'true');
+    this.memoryCache.set(STORAGE_KEYS.CLIENTS, []);
+    this.memoryCache.set(STORAGE_KEYS.SERVICES, []);
+    this.memoryCache.set(STORAGE_KEYS.INVOICES, []);
+    this.memoryCache.set(STORAGE_KEYS.PAYMENTS, []);
+    this.memoryCache.set(STORAGE_KEYS.SETTINGS, INITIAL_COMPANY_SETTINGS);
+    this.memoryCache.set(STORAGE_KEYS.BANK, INITIAL_BANK_DETAILS);
+    this.memoryCache.set(STORAGE_KEYS.SEQUENCES, [
+      { financialYear: '26-27', lastSequenceNumber: 0, cancelledNumbers: [] },
+    ]);
   }
 }
 

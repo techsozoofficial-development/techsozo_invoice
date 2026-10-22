@@ -142,7 +142,7 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
           {/* Print / Save PDF */}
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-3.5 py-2 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] text-xs font-semibold rounded-xl shadow-xs transition-colors min-h-[44px]"
+            className="flex items-center gap-2 px-3.5 py-2 bg-[#292A2D] hover:bg-[#1E1F21] text-[#FAF9F6] text-xs font-semibold rounded-xl shadow-xs transition-colors min-h-11"
           >
             <Printer className="w-4 h-4 text-[#C6A15B]" />
             <span>Print / Save as PDF</span>
@@ -153,14 +153,14 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
             <>
               <button
                 onClick={handleEditDraft}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#292A2D] text-xs font-semibold rounded-xl min-h-[44px]"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#292A2D] text-xs font-semibold rounded-xl min-h-11"
               >
                 <Edit className="w-4 h-4 text-[#C6A15B]" />
                 <span>Edit Draft</span>
               </button>
               <button
                 onClick={() => setIsFinalizeModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] text-xs font-bold rounded-xl shadow-xs min-h-[44px]"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#C6A15B] hover:bg-[#B38E46] text-[#292A2D] text-xs font-bold rounded-xl shadow-xs min-h-11"
               >
                 <FileCheck className="w-4 h-4" />
                 <span>Finalize Invoice</span>
@@ -175,14 +175,14 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
                 <>
                   <button
                     onClick={() => setPaymentModalInvoiceId(invoice.id)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF5E8] hover:bg-[#C6A15B] hover:text-[#292A2D] text-[#9A7832] border border-[#C6A15B]/40 text-xs font-bold rounded-xl min-h-[44px]"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF5E8] hover:bg-[#C6A15B] hover:text-[#292A2D] text-[#9A7832] border border-[#C6A15B]/40 text-xs font-bold rounded-xl min-h-11"
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>Record Payment</span>
                   </button>
                   <button
                     onClick={() => setReminderModalInvoiceId(invoice.id)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#292A2D] text-xs font-semibold rounded-xl min-h-[44px]"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#F1F0ED] hover:bg-[#E5E3DD] text-[#292A2D] text-xs font-semibold rounded-xl min-h-11"
                   >
                     <Send className="w-4 h-4 text-[#C6A15B]" />
                     <span>Balance Reminder</span>
@@ -191,7 +191,7 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
               )}
               <button
                 onClick={() => setIsCancelModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-neutral-500 hover:text-red-600 hover:bg-red-50 text-xs font-medium rounded-xl min-h-[44px]"
+                className="flex items-center gap-1.5 px-3 py-2 text-neutral-500 hover:text-red-600 hover:bg-red-50 text-xs font-medium rounded-xl min-h-11"
                 title="Cancel invoice while keeping record"
               >
                 <Ban className="w-4 h-4" />
@@ -215,7 +215,7 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
 
           <div className="text-left sm:text-right space-y-1">
             <h1 className="text-2xl font-heading font-extrabold text-[#C6A15B] tracking-wide">
-              {invoice.taxSnapshot.enabled ? 'TAX INVOICE' : 'INVOICE'}
+              INVOICE
             </h1>
             <div className="font-heading font-bold text-base text-[#FAF9F6] tracking-wider">
               {invoice.invoiceNumber || 'DRAFT (PREVIEW)'}
@@ -263,11 +263,6 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
             </p>
             <p className="text-[#4C5056]">Email: {invoice.companySnapshot.email}</p>
             <p className="text-[#4C5056]">Phone: {invoice.companySnapshot.phone}</p>
-            {invoice.companySnapshot.gstin && (
-              <p className="text-[#1A1B1E] font-medium font-mono mt-1">
-                GSTIN: {invoice.companySnapshot.gstin}
-              </p>
-            )}
           </div>
 
           {/* Bill-to details */}
@@ -285,14 +280,15 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
             </p>
             <p className="text-[#4C5056]">Email: {invoice.clientSnapshot.email}</p>
             <p className="text-[#4C5056]">Phone: {invoice.clientSnapshot.phone}</p>
-            {invoice.clientSnapshot.gstin && (
-              <p className="text-[#1A1B1E] font-medium font-mono mt-1">
-                Client GSTIN: {invoice.clientSnapshot.gstin}
-              </p>
-            )}
 
             {/* Dates Strip */}
             <div className="mt-4 pt-3 border-t border-[#F1F0ED] space-y-1">
+              {invoice.billingPeriod && (
+                <div className="flex justify-between sm:justify-end gap-3">
+                  <span className="text-[#5C6068]">Billing Period:</span>
+                  <span className="font-semibold text-[#1A1B1E]">{invoice.billingPeriod}</span>
+                </div>
+              )}
               <div className="flex justify-between sm:justify-end gap-3">
                 <span className="text-[#5C6068]">Invoice Date:</span>
                 <span className="font-semibold text-[#1A1B1E]">{invoice.issueDate}</span>
@@ -305,6 +301,44 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
           </div>
         </div>
 
+        {/* Deliverables Scope (Only displayed if provided and > 0, never if empty or zero) */}
+        {(() => {
+          const d = invoice.deliverables || invoice.clientSnapshot?.deliverables;
+          if (!d) return null;
+          const hasPosters = d.posterCount != null && Number(d.posterCount) > 0;
+          const hasReels = d.reelCount != null && Number(d.reelCount) > 0;
+          const hasShoots = d.shootingSessions != null && Number(d.shootingSessions) > 0;
+          if (!hasPosters && !hasReels && !hasShoots) return null;
+
+          return (
+            <div className="mb-6 p-3.5 bg-[#FAF9F6] border border-[#DAD8D2] rounded-xl text-xs print-break-inside-avoid">
+              <span className="font-heading font-bold uppercase tracking-wider text-[#9A7832] text-[10px] block mb-2">
+                Agreed Content Deliverables & Scope:
+              </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {hasPosters && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#DAD8D2] rounded-lg font-medium text-[#1A1B1E] shadow-2xs">
+                    <span className="text-[#C6A15B] font-bold">{d.posterCount}</span>
+                    <span>Poster{Number(d.posterCount) > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {hasReels && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#DAD8D2] rounded-lg font-medium text-[#1A1B1E] shadow-2xs">
+                    <span className="text-[#C6A15B] font-bold">{d.reelCount}</span>
+                    <span>Reel{Number(d.reelCount) > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {hasShoots && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#DAD8D2] rounded-lg font-medium text-[#1A1B1E] shadow-2xs">
+                    <span className="text-[#C6A15B] font-bold">{d.shootingSessions}</span>
+                    <span>Shooting Session{Number(d.shootingSessions) > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Line Items Table */}
         <div className="mb-8 overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -312,7 +346,6 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
               <tr className="border-b-2 border-[#292A2D] text-[#292A2D] font-bold uppercase tracking-wider">
                 <th className="py-3 px-3 w-10 text-center">#</th>
                 <th className="py-3 px-3">Service & Description</th>
-                <th className="py-3 px-3 w-20 text-center">SAC</th>
                 <th className="py-3 px-3 w-20 text-right">Qty</th>
                 <th className="py-3 px-3 w-28 text-right">Rate</th>
                 <th className="py-3 px-3 w-32 text-right">Amount</th>
@@ -326,9 +359,6 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
                     <span className="font-semibold text-sm text-[#1A1B1E] block">
                       {item.description}
                     </span>
-                  </td>
-                  <td className="py-3.5 px-3 text-center font-mono text-[#5C6068]">
-                    {item.sac || '998361'}
                   </td>
                   <td className="py-3.5 px-3 text-right tabular-nums">{item.quantity}</td>
                   <td className="py-3.5 px-3 text-right tabular-nums">{formatINR(item.rate)}</td>
@@ -362,6 +392,27 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
                 <p className="text-[#4C5056] leading-relaxed whitespace-pre-wrap">{invoice.notes}</p>
               </div>
             )}
+
+            {/* Platform Ad Budget Reference (strictly separated from invoice total) */}
+            {(() => {
+              const b = invoice.adBudget || invoice.clientSnapshot?.adBudget;
+              if (b?.amount == null || b.amount <= 0) return null;
+              return (
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-amber-900">
+                  <span className="text-[10px] uppercase font-bold text-amber-800 block mb-1">
+                    Direct Advertising Budget (Reference Only):
+                  </span>
+                  <p className="text-xs leading-relaxed">
+                    <strong>{formatINR(b.amount)}</strong>
+                    {b.period === 'Monthly' ? '/month' : ' (One-Time Campaign)'}
+                    {b.campaignName ? ` for ${b.campaignName}` : ''}
+                    <span className="block text-[11px] text-amber-700 mt-0.5">
+                      Paid directly by client to ad platforms (Meta/Google). Strictly separate from TechSozo's service invoice total.
+                    </span>
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Subtotal, discount, taxes, total */}
@@ -380,39 +431,6 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
               </div>
             )}
 
-            {invoice.taxSnapshot.enabled && (
-              <>
-                {invoice.taxSnapshot.isInterstate ? (
-                  <div className="flex justify-between py-1 border-b border-[#F1F0ED]">
-                    <span className="text-[#5C6068]">
-                      IGST ({invoice.taxSnapshot.igstRate}%):
-                    </span>
-                    <span className="font-medium text-[#1A1B1E] tabular-nums">
-                      {formatINR(invoice.taxSnapshot.igstAmount)}
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between py-1 border-b border-[#F1F0ED]">
-                      <span className="text-[#5C6068]">
-                        CGST ({invoice.taxSnapshot.cgstRate}%):
-                      </span>
-                      <span className="font-medium text-[#1A1B1E] tabular-nums">
-                        {formatINR(invoice.taxSnapshot.cgstAmount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-[#F1F0ED]">
-                      <span className="text-[#5C6068]">
-                        SGST ({invoice.taxSnapshot.sgstRate}%):
-                      </span>
-                      <span className="font-medium text-[#1A1B1E] tabular-nums">
-                        {formatINR(invoice.taxSnapshot.sgstAmount)}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
 
             {invoice.roundOff !== 0 && (
               <div className="flex justify-between py-1 border-b border-[#F1F0ED] text-[11px] text-[#5C6068]">
@@ -478,9 +496,19 @@ export const InvoicePreviewPage: React.FC<InvoicePreviewPageProps> = ({
           </div>
         </div>
 
-        {/* Terms & Footer */}
-        {invoice.paymentTerms && (
+        {/* Client Notes & Remittance Message */}
+        {invoice.notes && (
           <div className="mt-8 pt-6 border-t border-[#DAD8D2] text-[11px] text-[#5C6068] leading-relaxed">
+            <span className="font-semibold uppercase tracking-wider block mb-1 text-[#292A2D]">
+              Client Notes & Remittance Instructions:
+            </span>
+            <p className="whitespace-pre-wrap">{invoice.notes}</p>
+          </div>
+        )}
+
+        {/* Terms & Conditions */}
+        {invoice.paymentTerms && (
+          <div className={`text-[11px] text-[#5C6068] leading-relaxed ${invoice.notes ? 'mt-4 pt-4 border-t border-dashed border-[#DAD8D2]' : 'mt-8 pt-6 border-t border-[#DAD8D2]'}`}>
             <span className="font-semibold uppercase tracking-wider block mb-1 text-[#292A2D]">
               Terms & Conditions:
             </span>
